@@ -77,11 +77,14 @@ class FileSystem:
       dicnx=pickle.load(inputfie)
       print(dicnx)
       
-
+def createDisk():
+  with open("testfile","wb") as out:
+    out.truncate(1024*1024)
+    
 if __name__=="__main__":
-  
+  createDisk()
   Fmds=FileSystem()
   Fmds.createFile()
   Fmds.readFile()
-  
-  print(os.path.getsize("testfile"))
+
+ 
