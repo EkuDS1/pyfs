@@ -20,24 +20,62 @@ def to_parent_directory(i):
  # It is to create folder in current directory
 def create_folder(i,foldername_to_create):
     
-    #it creates a empty dictionary for 
+    # it creates a empty dictionary for 
     # new folder in the curent directory
     previous_dict[i][foldername_to_create] = {}
     print(previous_dict[i].keys())
     
     #recall function
     check_file(previous_dict[i],i)
-     
+
+# It will delete the folder from directory only
+def delete_folder(i, foldername_to_delete):
+    del(previous_dict[i][foldername_to_delete])
+    print(previous_dict[i].keys())
+    check_file(previous_dict[i],i)
+
+def create_file(i,filename_to_create):
+    
+    # it creates a empty file for 
+    # new file in the curent directory
+    # Store the address of file here
+    ####################################################################################
+    # EXAMPLE---------------------->
+    previous_dict[i][filename_to_create] = {"start Address" : "0000", "End Address" : "0000", "Offset Address":"0000" }
+    
+    write_file(i, filename_to_create)
+    ####################################################################################
+    
+    print(previous_dict[i].keys())
+    #recall function
+    check_file(previous_dict[i],i)
+    
+def write_file(i, filename_to_write):
+    print("writing file")
+    # line below contains the file address
+    #previous_dict[i][filename_to_write]
+    
+    # text to be written in the file
+    input_text = input ("Enter the text you want to write in this file")
+    # Enter the text in main file
+    
+def read_file(i,file_to_read):    
+    print("reading file")
+    # Below this line there is a dictionary
+    # which contains the address of file
+    # previous_dict[i][file_to_read]
+    
+
 # function created to get into folders
 # takes 2 input 
 # first directory and index for keeping the track of directory
 def check_file(dictt,i):
 
-    folderName = input("Press 0 to create folder\nPress 1 to exit\nPress 00 to go back previous folder\nName the folder you want to enter: ")
+    folderName = input("Press 0 to create folder\nPress 1 to exit\nPress 00 to go back previous folder\nPress 3 to delete folder or file\nName the folder you want to enter: ")
     
     # To end the code 
     if folderName == "1":
-        print("\n----------------EXIT----------------\n");
+        print("\n<<<----------------EXIT---------------->>>\n");
     # To get back to previous directory
     elif folderName == "00": 
         # if its not in main folders
@@ -58,6 +96,11 @@ def check_file(dictt,i):
         i+=1
         create_folder(i,foldername_to_create)
 
+    ## Deleting folder from directory
+    elif folderName == "3":
+        foldername_to_delete = input("Enter the folder name: ")
+        delete_folder(i, foldername_to_delete)
+        
     # Checking if the folder exists or not
     elif dictt.__contains__(folderName) :
         i+=1 
@@ -74,7 +117,7 @@ def check_file(dictt,i):
             # moving to parent directory
             elif option4 == "00":
                 to_parent_directory(i)
-                
+        
         else:        
             # Printing the folders that are in that folder
             print(dictt[folderName].keys())
@@ -83,7 +126,7 @@ def check_file(dictt,i):
  
             while (True):
                 # Asking user if he wants to get into the folders or not or want to create a folder
-                option3 = input("Press 00 to go to parent directory\nPress 0 to EXIT THE CODE\nPress 1 to create a folder:\nPress 2 if u want to enter the folder enter\n ")
+                option3 = input("Press 00 to go to parent directory\nPress 0 to EXIT THE CODE\nPress 1 to create a folder:\nPress 2 if u want to enter the folder\nPress 3 to delete a folder or file: ")
                 
                 # to exit the code
                 if option3 == "0":
@@ -105,12 +148,17 @@ def check_file(dictt,i):
                 elif option3 == "00":
                     to_parent_directory(i)
                     break  
-                    
+                
+                # to delete a folder
+                elif option3 == "3":
+                    foldername_to_delete = input("Enter the folder name: ")
+                    delete_folder(i, foldername_to_delete)
+                
     else :
         # folder doesnt exist
         print("folder dont exist\n")
         print(previous_dict[i].keys())
-        check_file(previous_dict, i)
+        check_file(previous_dict[i], i)
         
         
 ################################## Main Code starts from here ##################################
@@ -120,8 +168,7 @@ def check_file(dictt,i):
 directories_structure = open("data.json")
 dic = json.load(directories_structure)
     
-flag = 1
-while flag == 1: 
+while True: 
     
     # Printing the main folders
     print(dic.keys())
@@ -139,11 +186,12 @@ while flag == 1:
     elif input1 == "1" :
         flag = 0
         check_file(dic, i)
-    
+
     # Exiting the code
     elif input1 == "2":
-        flag = 0        
+      
         print("\n************ Program Closed ************")
+        break
 
 # Uodated directies stored back into json file
 with open("data.json", "w") as outfile:  
