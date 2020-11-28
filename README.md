@@ -4,7 +4,7 @@ High Speeds SUPER Quality Python Filesystem
 
 For file handling a directory structure is made using dictionaries within dictionaries to make a tree structure. Each directory has a dictionary of folders and a dictionary of files.
 
-##Commands
+## Commands
 
 ```
 ls to display available folders
