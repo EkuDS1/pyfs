@@ -1,198 +1,143 @@
-#impoting json as the file directory system is stored as json file
-import json 
+# pickle is used to store objects
+import pickle
+import os.path
 
-#global dictionary created to keep the track of directory
-global previous_dict, i
-previous_dict={}
-i = 0
+class File:
+    def __init__(self, name):
+        self.name = name
+        # TODO: Allocate space in disk and return starting address of file
+        self.disk_addr = 0
 
-#to move back to parent directory
-def to_parent_directory(i):
+    def write(self, input):
+        pass    # TODO: Write to disk
+    def read(self):
+        pass    # TODO: Read from disk
+
+class Directory:
+    def __init__(self, name, parent):
+        self.name = name
+        self.parent = parent
+        self.childdir = {}
+        self.childfiles = {}
     
-    #as pervious_dict contains the last enter directory
-    #as it is moving to parent directory
-    #current directory is changed to previous directory
-    previous_dict[i] = {}
-    i-=1
-    print(previous_dict[i].keys())
-    check_file(previous_dict[i], i)
+    # Create directory
+    def mkdir(self, dirname):
+        if dirname in self.childdir:
+            print("Folder already exists!")
+        else:
+            self.childdir[dirname] = Directory(dirname, self)
+    
+    # Delete directory
+    def rmdir(self, dirname):
+        if dirname in self.childdir:
+            del self.childdir[dirname]
+        else:
+            print("No such folder found to delete")
+    
+    # Create file
+    def mkfile(self, filename):
+        if filename in self.childfiles:
+            print("File already exists!")
+        else:
+            self.childfiles[filename] = File(filename)
         
- # It is to create folder in current directory
-def create_folder(i,foldername_to_create):
     
-    # it creates a empty dictionary for 
-    # new folder in the curent directory
-    previous_dict[i][foldername_to_create] = {}
-    print(previous_dict[i].keys())
-    
-    #recall function
-    check_file(previous_dict[i],i)
+    # Delete file
+    def rmfile(self, filename):
+        if filename in self.childfiles:
+            del self.childfiles[filename]
+        else:
+            print("No such file found to delete")
 
-# It will delete the folder from directory only
-def delete_folder(i, foldername_to_delete):
-    del(previous_dict[i][foldername_to_delete])
-    print(previous_dict[i].keys())
-    check_file(previous_dict[i],i)
-
-def create_file(i,filename_to_create):
-    
-    # it creates a empty file for 
-    # new file in the curent directory
-    # Store the address of file here
-    ####################################################################################
-    # EXAMPLE---------------------->
-    previous_dict[i][filename_to_create] = {"start Address" : "0000", "End Address" : "0000", "Offset Address":"0000" }
-    
-    write_file(i, filename_to_create)
-    ####################################################################################
-    
-    print(previous_dict[i].keys())
-    #recall function
-    check_file(previous_dict[i],i)
-    
-def write_file(i, filename_to_write):
-    print("writing file")
-    # line below contains the file address
-    #previous_dict[i][filename_to_write]
-    
-    # text to be written in the file
-    input_text = input ("Enter the text you want to write in this file")
-    # Enter the text in main file
-    
-def read_file(i,file_to_read):    
-    print("reading file")
-    # Below this line there is a dictionary
-    # which contains the address of file
-    # previous_dict[i][file_to_read]
-    
-
-# function created to get into folders
-# takes 2 input 
-# first directory and index for keeping the track of directory
-def check_file(dictt,i):
-
-    folderName = input("Press 0 to create folder\nPress 1 to exit\nPress 00 to go back previous folder\nPress 3 to delete folder or file\nName the folder you want to enter: ")
-    
-    # To end the code 
-    if folderName == "1":
-        print("\n<<<----------------EXIT---------------->>>\n");
-    # To get back to previous directory
-    elif folderName == "00": 
-        # if its not in main folders
-        if i > 0:   
-            to_parent_directory(i)
-        # if its in main folder no need to call function
-        elif i == 0:
-            print("\n")
-            print(dictt.keys())
-            print("\n")
-            # again to main function with parent directory as current directory
-            check_file(dictt,i)
-            
-    # To create a folder in current directory
-    elif folderName == "0":  
-        foldername_to_create = input("Enter the name of folder: ")
-        # adding 1 to store the current directory in other key
-        i+=1
-        create_folder(i,foldername_to_create)
-
-    ## Deleting folder from directory
-    elif folderName == "3":
-        foldername_to_delete = input("Enter the folder name: ")
-        delete_folder(i, foldername_to_delete)
+    # Recursively constructs the path of the folder we are in using a string
+    def getPath(self):
+        pathString = ''
+        if self.parent != None:
+            pathString += self.parent.getPath()
+            pathString += '/' + self.name
+        else:
+            pathString += self.name
         
-    # Checking if the folder exists or not
-    elif dictt.__contains__(folderName) :
-        i+=1 
-        previous_dict[i]= dictt[folderName]
-        # check if text file arives only
-        if len(dictt[folderName].values()) == 0:
-            print("Folder is empty")
-            
-            #Creating new folder in an empty folder
-            option4 = input("Press 1 to create folder\nPress 00 to go to parent directory: ")
-            if option4 == "1":
-                foldername_to_create = input("Enter the name of folder: ")
-                create_folder(i,foldername_to_create)
-            # moving to parent directory
-            elif option4 == "00":
-                to_parent_directory(i)
-        
-        else:        
-            # Printing the folders that are in that folder
-            print(dictt[folderName].keys())
-            # Moving into the folder
-            dictt = dictt[folderName]
- 
-            while (True):
-                # Asking user if he wants to get into the folders or not or want to create a folder
-                option3 = input("Press 00 to go to parent directory\nPress 0 to EXIT THE CODE\nPress 1 to create a folder:\nPress 2 if u want to enter the folder\nPress 3 to delete a folder or file: ")
-                
-                # to exit the code
-                if option3 == "0":
-                    break
-                
-                # Creating a folder in the directory present
-                elif option3 == "1":
-                    foldername_to_create = input("Enter the name of folder: ")
-                    create_folder(i,foldername_to_create)
-                    break
-                    
-                # Recalling the function 
-                # if the user want to get into the folder or not
-                elif option3 == "2":
-                    check_file(dictt, i)
-                    break
-                
-                # to move to parent directory
-                elif option3 == "00":
-                    to_parent_directory(i)
-                    break  
-                
-                # to delete a folder
-                elif option3 == "3":
-                    foldername_to_delete = input("Enter the folder name: ")
-                    delete_folder(i, foldername_to_delete)
-                
-    else :
-        # folder doesnt exist
-        print("folder dont exist\n")
-        print(previous_dict[i].keys())
-        check_file(previous_dict[i], i)
-        
-        
+        return pathString
+    
+    # Displays folders and files, MS DOS(or Windows CMD) style
+    def ls(self):
+        if self.childdir:
+            for dirname in self.childdir.keys():
+                print(f'\t<DIR>\t{dirname}')
+        if self.childfiles:
+            for filename in self.childfiles.keys():
+                print(f'\t\t{filename}\t')
+        if not self.childdir and not self.childfiles:
+            print("Empty Folder")
+
+
+# Stores updated directory data and closes program
+def end_program(currentDir):
+    
+    # go to root
+    while currentDir.parent != None:
+        currentDir = currentDir.parent
+
+    # store directory data as a binary file
+    pickle.dump(currentDir, open('fs.data', 'wb'))
+
+    print("\n************ Program Closed ************")
+    exit(0) # exit status 0 indicating that program closed without problems
+    
+
 ################################## Main Code starts from here ##################################
-        
-# Directories structure is taken 
-# from json file to dictionary  
-directories_structure = open("data.json")
-dic = json.load(directories_structure)
-    
-while True: 
-    
-    # Printing the main folders
-    print(dic.keys())
-    input1 = input("Press 0 to create folder\nPress 1 to enter the folder\nPress 2 to EXIT: ")
 
-    # Setting the current directory of the user as the main folders directory
-    previous_dict[0]= dic
-    
-    # Creating a new folder/file
-    if input1 == "0":
-            foldername_to_create = input("Enter the name of folder: ")
-            create_folder(i,foldername_to_create)
-    
-    # Going into the directory
-    elif input1 == "1" :
-        flag = 0
-        check_file(dic, i)
+# If directory data file exits, load it
+if os.path.isfile('fs.data'):
+    currentDir = pickle.load(open('fs.data', 'rb'))
+# Otherwise, create root folder with parent set to None
+else:
+    currentDir = Directory('root', None)
 
-    # Exiting the code
-    elif input1 == "2":
-      
-        print("\n************ Program Closed ************")
-        break
 
-# Uodated directies stored back into json file
-with open("data.json", "w") as outfile:  
-    json.dump(dic, outfile) 
+# Dictionary containing directory commands and their corresponding methods
+commandDic = {
+    'mkdir' : Directory.mkdir,
+    'rmdir' : Directory.rmdir,
+    'mkfile' : Directory.mkfile,
+    'rmfile' : Directory.rmfile
+}
+
+print('''
+    ls to display available folders
+
+    mkdir [dirname] to create folder
+    rmdir [dirname] to remove a folder
+    mkfile [filename] to create a file
+    rmfile [filename] to remove a file
+
+    cd [dirname] to enter the folder
+
+    Also, 'cd ..' returns to previous folder
+
+    exit to EXIT
+    ''')
+
+while True:  
+    # Prints the current path and gets input
+    args = input(currentDir.getPath() + ': ')
+
+    if args == 'exit':
+        end_program(currentDir)
+    elif args == 'ls':
+        currentDir.ls()
+    else:
+        # When the input is a command with arguments, we split it
+        # Here, args[0] is the command itself while args[1] should be its string argument 
+        args = args.split(' ', 1)
+        if args[0] == 'cd':
+            if args[1] == '..':
+                currentDir = currentDir.parent
+            elif args[1] in currentDir.childdir:
+                currentDir = currentDir.childdir[args[1]]
+            else: print("Folder not found.")
+        elif args[0] in commandDic:
+            commandDic[args[0]](currentDir, args[1])
+        else:
+            print("ERROR: No such command found!")

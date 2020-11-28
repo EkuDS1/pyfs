@@ -2,5 +2,31 @@
 
 High Speeds SUPER Quality Python Filesystem
 
-for File handling a directory structure is made using dictionary in a dictionary
-later on when the program is close the dictionary is stored as json file so the file system structure remains same
+For file handling a directory structure is made using dictionaries within dictionaries to make a tree structure. Each directory has a dictionary of folders and a dictionary of files.
+
+##Commands
+
+```
+ls to display available folders
+
+mkdir [dirname] to create folder
+rmdir [dirname] to remove a folder
+mkfile [filename] to create a file
+rmfile [filename] to remove a file
+
+cd [dirname] to enter the folder
+
+Also, 'cd ..' returns to previous folder
+
+exit to EXIT
+```
+For example:
+```
+root/folderB/a:mkdir example folder
+root/folderB/a:ls
+        <DIR>   example folder
+                somefile.txt
+                someotherfile.txt
+root/folderB/a:cd example folder
+root/folderB/a/example folder:
+```
