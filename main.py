@@ -80,7 +80,8 @@ def end_program(currentDir):
         currentDir = currentDir.parent
 
     # store directory data as a binary file
-    pickle.dump(currentDir, open('fs.data', 'wb'))
+    with open('fs.data', 'wb') as fileOut:
+        pickle.dump(currentDir, fileOut)
 
     print("\n************ Program Closed ************")
     exit(0) # exit status 0 indicating that program closed without problems
@@ -90,7 +91,8 @@ def end_program(currentDir):
 
 # If directory data file exits, load it
 if os.path.isfile('fs.data'):
-    currentDir = pickle.load(open('fs.data', 'rb'))
+    with open('fs.data', 'rb') as fileIn:
+        currentDir = pickle.load(fileIn)
 # Otherwise, create root folder with parent set to None
 else:
     currentDir = Directory('root', None)
