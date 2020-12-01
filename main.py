@@ -2,6 +2,11 @@
 from FileSystem import FileSystem
 import pickle
 import os.path
+from bitarray import bitarray
+chunk_size=256
+size=1024*10
+
+
 
 class File:
     def __init__(self, name):
@@ -16,8 +21,22 @@ class File:
         chunksAndLength = fs.Write_to_File(self.chunks, self.length, input)
         self.chunks = chunksAndLength[0]
         self.length = chunksAndLength[1]
+
     def read(self):
         return fs.Read_from_File(self.chunks)
+
+    def move(self,from_,to,size):
+        s=len(self.chunks)*chunk_size
+        sA=self.chunks[0]*chunk_size
+        from_=int(from_)
+        to=int(to)
+        size=int(size)
+        if from_ >= 0 and from_ < s and to >= 0 and to+s < s and size < s and size >= 0:
+            from_=sA+from_
+            to=sA+to
+            fs.move_within_file(from_,to,size)
+        else:
+            print("Out Of File Index!")
 
 class Directory:
     def __init__(self, name, parent):
@@ -99,26 +118,31 @@ class Directory:
         
     def write(self,fileName):
       
-      if fileName in self.childfiles:
-        file=self.childfiles[fileName]
-        textBytes=input("Enter Data:")
-        textBytes=textBytes.encode("utf-8")
-        file.write(textBytes)
-      else:
-        print("File Not Found!")
+        if fileName in self.childfiles:
+            file=self.childfiles[fileName]
+            textBytes=input("Enter Data:")
+            textBytes=textBytes.encode("utf-8")
+            file.write(textBytes)
+        else:
+            print("File Not Found!")
 
-
+    def move_file(self,fileName,from_,to,size):
+        if fileName in self.childfiles:
+            file=self.childfiles[fileName]
+            file.move(from_,to,size)
+        else:
+            print("File Not Found!")
 # Stores updated directory data and closes program
 def end_program(currentDir):
-    
+
     # go to root
     while currentDir.parent != None:
         currentDir = currentDir.parent
 
     # store directory data as a binary file
     with open('fs.data', 'r+b') as fileOut:
-        pickle.dump(currentDir, fileOut)
-
+        pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
+        
     print("\n************ Program Closed ************")
     exit(0) # exit status 0 indicating that program closed without problems
     
@@ -126,27 +150,33 @@ def end_program(currentDir):
 ################################## Main Code starts from here ##################################
 
 if __name__ == "__main__":
-
+    
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
         with open('fs.data', 'r+b') as fileIn:
-            currentDir = pickle.load(fileIn)
+            temp= pickle.load(fileIn)
+            currentDir=temp[0]
+            bitArray=temp[1]
+            print(bitArray)
     # Otherwise, create hard drive and root folder with parent set to None
     else:
         with open("fs.data","wb") as out:
             out.truncate(1024*10)
             currentDir = Directory('root', None)
-   
+            bitArray=bitarray(int(size/chunk_size))
+            bitArray.setall(0)
+            bitArray[0:4]=True
     fs = FileSystem(open('fs.data', 'r+b'))
-
-    # Dictionary containing directory commands and their corresponding methods
+    fs.setBitArray(bitArray)
+   # Dictionary containing directory commands and their corresponding methods
     commandDic = {
         'mkdir' :  Directory.mkdir,
         'rmdir' :  Directory.rmdir,
         'mkfile' : Directory.mkfile,
         'rmfile' : Directory.rmfile,
         'read'  :  Directory.read,
-        'write':   Directory.write
+        'write':   Directory.write,
+        'move' :   Directory.move_file
     }
 
     print('''
@@ -175,13 +205,18 @@ if __name__ == "__main__":
         else:
             # When the input is a command with arguments, we split it
             # Here, args[0] is the command itself while args[1] should be its string argument 
-            args = args.split(' ', 1)
+            args = args.split(' ', 5)
             if args[0] == 'cd':
                 if args[1] == '..':
                     currentDir = currentDir.parent
                 elif args[1] in currentDir.childdir:
                     currentDir = currentDir.childdir[args[1]]
                 else: print("Folder not found.")
+            elif len(args)==5:
+                if args[0] in commandDic:
+                    commandDic[args[0]](currentDir,args[1],args[2],args[3],args[4])
+                else:
+                    print("No such command found!")
             elif args[0] in commandDic:
                 commandDic[args[0]](currentDir, args[1])
             else:
