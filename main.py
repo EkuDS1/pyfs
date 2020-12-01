@@ -9,6 +9,9 @@ class File:
         self.chunks = fs.allocateFile()
         self.length = 0
 
+    def deleteFile(self):
+        fs.deallocateFile(self.chunks)
+
     def write(self, input):
         chunksAndLength = fs.Write_to_File(self.chunks, self.length, input)
         self.chunks = chunksAndLength[0]
@@ -33,7 +36,10 @@ class Directory:
     # Delete directory
     def rmdir(self, dirname):
         if dirname in self.childdir:
-            del self.childdir[dirname]
+            if not self.childdir[dirname].childfiles:
+                del self.childdir[dirname]
+            else:
+                print("This folder contains files!")
         else:
             print("No such folder found to delete")
     
@@ -48,6 +54,7 @@ class Directory:
     # Delete file
     def rmfile(self, filename):
         if filename in self.childfiles:
+            self.childfiles[filename].deleteFile()
             del self.childfiles[filename]
         else:
             print("No such file found to delete")
@@ -109,7 +116,7 @@ def end_program(currentDir):
         currentDir = currentDir.parent
 
     # store directory data as a binary file
-    with open('fs.data', 'wb') as fileOut:
+    with open('fs.data', 'r+b') as fileOut:
         pickle.dump(currentDir, fileOut)
 
     print("\n************ Program Closed ************")
@@ -122,7 +129,7 @@ if __name__ == "__main__":
 
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
-        with open('fs.data', 'rb') as fileIn:
+        with open('fs.data', 'r+b') as fileIn:
             currentDir = pickle.load(fileIn)
     # Otherwise, create hard drive and root folder with parent set to None
     else:

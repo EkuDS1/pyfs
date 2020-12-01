@@ -27,6 +27,16 @@ class FileSystem:
         bitArray[chunk] = True
       return allocatedChunks
 
+    def deallocateFile(self, chunks):
+
+        for chunk in chunks:
+            # go to address of each chunk
+            self.virtualHardDisk.seek(chunk*chunk_size)
+            # clear bits of bitarray for each chunk
+            bitArray[chunk] = False
+            # set all bytes of chunk to 0x00
+            self.virtualHardDisk.write(bytes.fromhex('00'*chunk_size))
+
     def lookFreeSpace(self, chunks):
       i=0
       parts=list()
