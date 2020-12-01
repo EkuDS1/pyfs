@@ -78,6 +78,19 @@ class Directory:
         else:
             print("No such file found to delete")
 
+    # Move file to another folder
+    def mvfile(self, filename, path):
+        if filename in self.childfiles:
+            newDir = cd(self, path.split('/'))
+            if newDir == self:
+                print("Error: Move operation failed!")
+                return
+            newDir.childfiles[filename] = self.childfiles[filename]
+            del self.childfiles[filename]
+        else:
+            print("No such file found to move")
+            return
+
     # set mode bits and return File object
     def open(self, filename, mode):
         self.childfiles[filename].mode = mode
@@ -205,6 +218,7 @@ if __name__ == "__main__":
         'rmdir'  : Directory.rmdir,
         'mkfile' : Directory.mkfile,
         'rmfile' : Directory.rmfile,
+        'mvfile' : Directory.mvfile,
         'read'   : Directory.read,
         'write'  : Directory.write,
         'move'   : Directory.move_file,
@@ -245,6 +259,8 @@ if __name__ == "__main__":
                 commandDic[args[0]](currentDir)
             elif len(args) == 2:
                 commandDic[args[0]](currentDir, args[1])
+            elif len(args) == 3:
+                commandDic[args[0]](currentDir, args[1], args[2])
             elif len(args) == 5:
                 commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
             else: print("Argument Error!")
