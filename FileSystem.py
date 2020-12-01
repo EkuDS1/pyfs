@@ -4,27 +4,23 @@ import math
 import os.path
 import sys
 from bitarray import bitarray
-
-descriptor=dict()
 chunk_size=256
 size=1024*10
-bitArray=bitarray(int(size/chunk_size))
-bitArray.setall(0)
-bitArray[0:3]=True
-descriptor['bitArray']=bitArray
+
 
 class FileSystem:
 
-    def __init__(self, diskstream):
-        self.virtualHardDisk = diskstream
+    def __init__(self, diskstream):      
+      self.virtualHardDisk = diskstream
+      self.bitArray=None
 
     def __del__(self):
-        self.virtualHardDisk.close()
+      self.virtualHardDisk.close()
         
     def allocateFile(self):
       allocatedChunks = self.lookFreeSpace(1)
       for chunk in allocatedChunks:
-        bitArray[chunk] = True
+        self.bitArray[chunk] = True
       return allocatedChunks
 
     def lookFreeSpace(self, chunks):
@@ -32,7 +28,7 @@ class FileSystem:
       parts=list()
       for chunk in range(0, chunks):
         # Skip used chunks
-        while(bitArray[i]==True):
+        while(self.bitArray[i]==True):
           i+=1
         # Append unused chunks
         parts.append(i)
@@ -67,10 +63,10 @@ class FileSystem:
 
         for chunk in chunks:
             # if chunk has already been completely written, ignore it
-            if bitArray[chunk]==True:
+            if self.bitArray[chunk]==True:
                 continue
             else:    
-                bitArray[chunk]=True
+                self.bitArray[chunk]=True
                 self.virtualHardDisk.seek(chunk*chunk_size)
 
             # If not last chunk, write entire chunk
@@ -83,10 +79,22 @@ class FileSystem:
                 self.virtualHardDisk.write(input[initial_write:len(input)])
                 length+=len(input)-initial_write
         return chunks, length
+
+
+    def move_within_file(self,from_,to,size):
+        self.virtualHardDisk.seek(from_)
+        textBytes=self.virtualHardDisk.read(size)
+        self.virtualHardDisk.seek(from_)
+        empty=" "*int(size)
+        empty=empty.encode('utf-8')
+        self.virtualHardDisk.write(empty)
+        self.virtualHardDisk.seek(to)
+        self.virtualHardDisk.write(textBytes)
+        print("Move Operation Completed!")
         
-    
+
+
     def Read_from_File(self, chunks):
-        
         outputString= ""
         print(chunks)
         for chunk in chunks:
@@ -94,3 +102,7 @@ class FileSystem:
             outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
         print(len(outputString))
         return outputString
+    def setBitArray(self,bitArray):
+      self.bitArray=bitArray
+    def getBitArray(self):
+      return self.bitArray
