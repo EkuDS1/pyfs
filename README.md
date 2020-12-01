@@ -19,7 +19,7 @@ write [filename] to write to a file
 
 move [filename] [from] [to] [size] to move text within the file
 
-cd [dirname] to enter the folder
+cd [dirname or path] to enter the folder
 
 Also, 'cd ..' returns to previous folder
 
@@ -27,11 +27,13 @@ exit to EXIT
 ```
 For example:
 ```
-root/folderB/a:mkdir example folder
+root/folderB/a:mkdir example_folder
 root/folderB/a:ls
-        <DIR>   example folder
+        <DIR>   example_folder
+        <DIR>   another_folder
                 somefile.txt
                 someotherfile.txt
-root/folderB/a:cd example folder
-root/folderB/a/example folder:
+root/folderB/a:cd example_folder
+root/folderB/a/example_folder: cd ../another_folder
+root/folderB/a/another_folder
 ```
