@@ -60,7 +60,7 @@ class FileSystem:
             # Separate part of input that can fit in the space and write it
             self.virtualHardDisk.write(input[0:remainingSpace])
             # Write the rest just like a new file
-            input = input[remainingSpace+1:len(input)+1]
+            input = input[remainingSpace+1:]
             chunks_needed=math.ceil(len(input)/chunk_size)
             chunks+=self.lookFreeSpace(chunks_needed)
         else:
@@ -86,7 +86,7 @@ class FileSystem:
                 initial_write+=chunk_size
             # Else write the remaining data from input into last chunk
             else:
-                self.virtualHardDisk.write(input[initial_write:len(input)])
+                self.virtualHardDisk.write(input[initial_write:])
                 length+=len(input)-initial_write
         return chunks, length
 

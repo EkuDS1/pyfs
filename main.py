@@ -132,12 +132,39 @@ class Directory:
             file.move(from_,to,size)
         else:
             print("File Not Found!")
-# Stores updated directory data and closes program
-def end_program(currentDir):
 
+# returns Directory object based on the current directory and the given path
+def cd(currentDirInput, pathArr):
+
+    if not pathArr or pathArr[0] == '':
+        return currentDirInput
+
+    tempDir = currentDirInput 
+
+    # Create dictionary containing Directory objects for root folder and child folders
+    tempDirDict = {
+        'root' : root,
+    }
+    tempDirDict.update(tempDir.childdir)
+
+    if pathArr[0] in tempDirDict:
+        tempDir = cd(tempDirDict[pathArr[0]], pathArr[1:])
+    elif pathArr[0] == '..':
+        if tempDir.parent != None:
+            tempDir = cd(tempDir.parent, pathArr[1:])
+        else:
+            tempDir = currentDir
+            print("Root has no parent folder.")
+    else:
+        tempDir = currentDir
+        print("Folder not found.")
+    
+    return tempDir
+
+# Stores updated directory data and closes program
+def end_program():
     # go to root
-    while currentDir.parent != None:
-        currentDir = currentDir.parent
+    currentDir = root
 
     # store directory data as a binary file
     with open('fs.data', 'r+b') as fileOut:
@@ -154,29 +181,34 @@ if __name__ == "__main__":
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
         with open('fs.data', 'r+b') as fileIn:
-            temp= pickle.load(fileIn)
-            currentDir=temp[0]
-            bitArray=temp[1]
+            dirAndBitArray= pickle.load(fileIn)
+            currentDir = dirAndBitArray[0]
+            bitArray = dirAndBitArray[1]
             print(bitArray)
     # Otherwise, create hard drive and root folder with parent set to None
     else:
         with open("fs.data","wb") as out:
             out.truncate(1024*10)
-            currentDir = Directory('root', None)
             bitArray=bitarray(int(size/chunk_size))
             bitArray.setall(0)
             bitArray[0:4]=True
+            
+            currentDir = Directory('root', None)
     fs = FileSystem(open('fs.data', 'r+b'))
     fs.setBitArray(bitArray)
+
+    root = currentDir   # Used for changing directories
+
    # Dictionary containing directory commands and their corresponding methods
     commandDic = {
-        'mkdir' :  Directory.mkdir,
-        'rmdir' :  Directory.rmdir,
+        'mkdir'  : Directory.mkdir,
+        'rmdir'  : Directory.rmdir,
         'mkfile' : Directory.mkfile,
         'rmfile' : Directory.rmfile,
-        'read'  :  Directory.read,
-        'write':   Directory.write,
-        'move' :   Directory.move_file
+        'read'   : Directory.read,
+        'write'  : Directory.write,
+        'move'   : Directory.move_file,
+        'ls'     : Directory.ls
     }
 
     print('''
@@ -198,28 +230,25 @@ if __name__ == "__main__":
 
     while True:  
         # Prints the current path and gets input
-        args = input(currentDir.getPath() + ': ')
+        # To get arguments to the commands, we split the input into a maximum of 5 parts
+        args = input(currentDir.getPath() + ': ').split(' ', 5)
 
-        if args == 'exit':
-            end_program(currentDir)
-        elif args == 'ls':
-            currentDir.ls()
-        else:
-            # When the input is a command with arguments, we split it
-            # Here, args[0] is the command itself while args[1] should be its string argument 
-            args = args.split(' ', 5)
-            if args[0] == 'cd':
-                if args[1] == '..':
-                    currentDir = currentDir.parent
-                elif args[1] in currentDir.childdir:
-                    currentDir = currentDir.childdir[args[1]]
-                else: print("Folder not found.")
-            elif len(args)==5:
-                if args[0] in commandDic:
-                    commandDic[args[0]](currentDir,args[1],args[2],args[3],args[4])
-                else:
-                    print("No such command found!")
-            elif args[0] in commandDic:
+        # Here, args[0] is the command itself while args[1] onwards should be its string argument 
+        if args[0] == 'exit':
+            end_program()
+
+        elif args[0] == 'cd':
+            currentDir = cd(currentDir, args[1].split('/'))
+
+        elif args[0] in commandDic:
+            if len(args) == 1:
+                commandDic[args[0]](currentDir)
+            elif len(args) == 2:
                 commandDic[args[0]](currentDir, args[1])
-            else:
-                print("ERROR: No such command found!")
+            elif len(args) == 5:
+                commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
+            else: print("Argument Error!")
+        else:
+            print("ERROR: No such command found!")
+            
+            
