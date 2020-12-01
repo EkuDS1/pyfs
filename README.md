@@ -14,6 +14,11 @@ rmdir [dirname] to remove a folder
 mkfile [filename] to create a file
 rmfile [filename] to remove a file
 
+read [filename] to read from a file
+write [filename] to write to a file
+
+move [filename] [from] [to] [size] to move text within the file
+
 cd [dirname] to enter the folder
 
 Also, 'cd ..' returns to previous folder

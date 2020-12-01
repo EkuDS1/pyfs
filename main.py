@@ -189,6 +189,8 @@ if __name__ == "__main__":
         read [filename] to read from a file
         write [filename] to write to a file
 
+        move [filename] [from] [to] [size] to move text within the file
+
         cd [dirname] to enter the folder
         Also, 'cd ..' returns to previous folder
         exit to EXIT
