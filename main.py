@@ -16,10 +16,8 @@ class File:
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
     
-    def write_at(self):
-            input_=input("Enter Data:")
+    def write_at(self, at, input_):
             input_=input_.encode("utf-8")
-            at=input("Enter Location:")
 
             chunksAndLength=fs.write_at(self.chunks,self.length,input_,int(at))
             self.chunks = chunksAndLength[0]
@@ -35,14 +33,13 @@ class File:
     def read(self):
         print(fs.Read_from_File(self.chunks))
 
-    def read_at(self):
-        at=input("Enter Location:")
-        at=int(at)
-        print(at)
-        if at<self.length and at>0:
-            print(fs.read_at(self.chunks,self.length,at))
+    def read_at(self, at, readSize):
+        at = int(at)
+        readSize = int(readSize)
+        if (at + readSize) <= self.length and (at + readSize) >=0:
+            print(fs.read_at(self.chunks,at, readSize))
         else:
-            print("Invalid Location!")
+            print("Error: Trying to read outside of file!")
             print(self.length)
 
     def move_in(self):
@@ -134,17 +131,20 @@ class Directory:
                 Choose an operation to perform on the file: 
                     read
                     write 
-                    write_at 
-                    read_at 
+                    write_at [address in file] [input]
+                    read_at [address in file] [size]
                     move
                 ''')
             while flag!=1:
-                fileargs=input("Operation: ")
-                
-                if fileargs=="close":
+                fileargs=input("Operation: ").split()
+
+                if fileargs[0]=="close":
                     flag=self.close(filename)
-                elif fileargs in fileDic:
-                    fileDic[fileargs]()
+                elif fileargs[0] in fileDic:
+                    if len(fileargs) == 1:
+                        fileDic[fileargs[0]]()
+                    elif len(fileargs) == 3:
+                        fileDic[fileargs[0]](fileargs[1], fileargs[2])
                 else:
                     print("Invalid Command!")
             
@@ -274,6 +274,9 @@ if __name__ == "__main__":
         mvfile [filename] [path] to move file to another folder
         cd [dirname] to enter the folder
         Also, 'cd ..' returns to previous folder
+
+        memmap to view memory map of the filesystem
+
         exit to EXIT
         ''')
 

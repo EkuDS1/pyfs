@@ -169,19 +169,39 @@ class FileSystem:
         print("Length: {}".format(len(outputString)))
         return outputString
 
-    def read_at(self,chunks,length,at):
+    def read_at(self,chunks,at, readSize):
         outputString=""
-        startingAddress=chunks[0]*chunk_size
-        inChunk=math.ceil(at/chunk_size)
-        firstRead=chunk_size*inChunk-at
-        at=at+startingAddress
+        startingAddress = chunks[0] * chunk_size
+        at = at + startingAddress
+
+        
+
+        if at == startingAddress:
+            firstChunk = math.ceil(at / chunk_size) + 1
+        else:
+            firstChunk = math.ceil(at / chunk_size)
+
+        lastChunk = math.ceil((at + readSize)/chunk_size)
 
         self.virtualHardDisk.seek(at)
-        outputString+=self.virtualHardDisk.read(firstRead).decode("utf-8").rstrip("\x00")
         
-        for chunk in chunks[inChunk:len(chunks)+1]:
-            self.virtualHardDisk.seek(chunk*chunk_size)
-            outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
+        # if we only need to read from one chunk
+        if firstChunk == lastChunk:
+            outputString+=self.virtualHardDisk.read(readSize).decode("utf-8").rstrip("\x00")
+        # if we need to read from more than one chunk
+        else:
+            firstRead = chunk_size * firstChunk - at
+            outputString+=self.virtualHardDisk.read(firstRead).decode("utf-8").rstrip("\x00")
+
+            for chunk in chunks[firstChunk:lastChunk]:
+                self.virtualHardDisk.seek(chunk*chunk_size)
+                outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
+            
+            lastRead = (chunk_size * lastChunk) - (at + readSize)
+            outputString+=self.virtualHardDisk.read(lastRead).decode("utf-8").rstrip("\x00")
+
+            
+
         print(len(outputString))
         return outputString
 
