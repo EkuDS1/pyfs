@@ -42,23 +42,20 @@ class File:
             print("Error: Trying to read outside of file!")
             print(self.length)
 
-    def move_in(self):
-        input_=input("Enter in this format [From To Size]:")
-        input_=input_.split(' ',3)
-        print(input_)
-        if len(input_)==3:
-            from_=int(input_[0])
-            to=int(input_[1])
-            size=int(input_[2])
-        else:
-            print("Error: Positional Arguments Missing!")
-            return
+    def move_in(self, fromAddr, toAddr, selectionSize):
+
+        fromAddr = int(fromAddr)
+        toAddr = int(toAddr)
+        selectionSize = int(selectionSize)
+        
         total_size=len(self.chunks)*chunk_size
+
         startingAddress=self.chunks[0]*chunk_size
-        if from_ >= 0 and from_ < total_size and to >= 0 and to < total_size and size < total_size and size >= 0:
-            from_=startingAddress+from_
-            to=startingAddress+to
-            self.length=fs.move_within_file(from_,to,size,self.chunks,self.length)
+
+        if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
+            fromAddr = startingAddress + fromAddr
+            toAddr = startingAddress + toAddr
+            self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
         else:
             print("Out Of File Index!")
 
@@ -133,7 +130,7 @@ class Directory:
                     write 
                     write_at [address in file] [input]
                     read_at [address in file] [size]
-                    move
+                    move [from address] [to address] [size]
                 ''')
             while flag!=1:
                 fileargs=input("Operation: ").split()
@@ -145,6 +142,8 @@ class Directory:
                         fileDic[fileargs[0]]()
                     elif len(fileargs) == 3:
                         fileDic[fileargs[0]](fileargs[1], fileargs[2])
+                    elif len(fileargs) == 4:
+                        fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
                 else:
                     print("Invalid Command!")
             
