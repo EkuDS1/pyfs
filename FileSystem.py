@@ -108,7 +108,7 @@ class FileSystem:
             self.virtualHardDisk.write(input[0:remainingSpace])
             length+=len(input[0:remainingSpace])
             # Write the rest just like a new file
-            input = input[remainingSpace:len(input)+1]
+            input = input[remainingSpace:]
             chunks_needed=math.ceil(len(input)/chunk_size)
             chunks+=self.lookFreeSpace(chunks_needed)
         else:
@@ -134,12 +134,20 @@ class FileSystem:
                 initial_write+=chunk_size
             # Else write the remaining data from input into last chunk
             else:
-                self.virtualHardDisk.write(input[initial_write:len(input)])
+                self.virtualHardDisk.write(input[initial_write:])
                 length+=len(input)-initial_write
         return chunks, length
 
 
-    def move_within_file(self,from_,to,size):
+    def move_within_file(self,from_,to,size,chunks,length):
+        startingAddress=chunks[0]*chunk_size
+        finalWrite=startingAddress+length
+        additionalLength=0
+        if(to>finalWrite):
+          print(finalWrite)
+          additionalLength=to-from_
+          length+=additionalLength
+        
         self.virtualHardDisk.seek(from_)
         textBytes=self.virtualHardDisk.read(size)
         self.virtualHardDisk.seek(from_)
@@ -149,20 +157,19 @@ class FileSystem:
         self.virtualHardDisk.seek(to)
         self.virtualHardDisk.write(textBytes)
         print("Move Operation Completed!")
-        
+        return length
 
 
     def Read_from_File(self, chunks):
-        outputString= ""
+        outputString=""
         print(chunks)
         for chunk in chunks:
             self.virtualHardDisk.seek(chunk*chunk_size)
             outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
-        print(len(outputString))
+        print("Length: {}".format(len(outputString)))
         return outputString
 
     def read_at(self,chunks,length,at):
-
         outputString=""
         startingAddress=chunks[0]*chunk_size
         inChunk=math.ceil(at/chunk_size)
