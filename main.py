@@ -3,10 +3,9 @@ from FileSystem import FileSystem
 import pickle
 import os.path
 from bitarray import bitarray
+
 chunk_size=256
 size=1024*10
-
-
 
 class File:
     def __init__(self, name):
@@ -16,24 +15,51 @@ class File:
 
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
+    
+    def write_at(self):
+            input_=input("Enter Data:")
+            input_=input_.encode("utf-8")
+            at=input("Enter Location:")
 
-    def write(self, input):
-        chunksAndLength = fs.Write_to_File(self.chunks, self.length, input)
-        self.chunks = chunksAndLength[0]
-        self.length = chunksAndLength[1]
-
+            chunksAndLength=fs.write_at(self.chunks,self.length,input_,int(at))
+            self.chunks = chunksAndLength[0]
+            self.length = chunksAndLength[1]
+            
+    def write(self):
+            input_=input("Enter Data:")
+            input_=input_.encode("utf-8")
+            chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
+            self.chunks = chunksAndLength[0]
+            self.length = chunksAndLength[1]
+            
     def read(self):
-        return fs.Read_from_File(self.chunks)
+        print(fs.Read_from_File(self.chunks))
 
-    def move(self,from_,to,size):
+    def read_at(self):
+        at=input("Enter Location:")
+        at=int(at)
+        print(at)
+        if at<self.length and at>0:
+            print(fs.read_at(self.chunks,self.length,at))
+        else:
+            print("Invalid Location!")
+
+    def move_in(self):
+        input_=input("Enter in this format [From To Size]:")
+        input_=input_.split(' ',3)
+        print(input_)
+        if len(input_)==3:
+            from_=int(input_[0])
+            to=int(input_[1])
+            size=int(input_[2])
+        else:
+            print("Error: Positional Arguments Missing!")
+            return
         s=len(self.chunks)*chunk_size
-        sA=self.chunks[0]*chunk_size
-        from_=int(from_)
-        to=int(to)
-        size=int(size)
-        if from_ >= 0 and from_ < s and to >= 0 and to+s < s and size < s and size >= 0:
-            from_=sA+from_
-            to=sA+to
+        startingAddress=self.chunks[0]*chunk_size
+        if from_ >= 0 and from_ < s and to >= 0 and to < s and size < s and size >= 0:
+            from_=startingAddress+from_
+            to=startingAddress+to
             fs.move_within_file(from_,to,size)
         else:
             print("Out Of File Index!")
@@ -79,13 +105,42 @@ class Directory:
             print("No such file found to delete")
 
     # set mode bits and return File object
-    def open(self, filename, mode):
-        self.childfiles[filename].mode = mode
-        return self.childfiles[filename]
-    
+    def open_(self, filename):
+        flag=0
+        if filename in self.childfiles:
+            file=self.childfiles[filename]
+            fileDic={
+                'read'      :  file.read,
+                'write'     :  file.write,
+                'move'      :  file.move_in,
+                'write_at'  :  file.write_at,
+                'read_at'   :  file.read_at
+            }
+            print('''
+                Choose an operation to perform on the file: 
+                    read 
+                    write 
+                    write_at 
+                    read_at 
+                    move_in 
+                ''')
+            while flag!=1:
+                fileargs=input("Operation: ")
+                
+                if fileargs=="close":
+                    flag=self.close(filename)
+                if fileargs in fileDic:
+                    fileDic[fileargs]()
+                else:
+                    print("Invalid Command!")
+            
+            
+        else:
+            print("File Not Found!")
+        
     # clear mode bits
     def close(self, filename):
-        self.childfiles[filename].mode = ''
+        return 1
 
     # Recursively constructs the path of the folder we are in using a string
     def getPath(self):
@@ -109,29 +164,9 @@ class Directory:
         if not self.childdir and not self.childfiles:
             print("Empty Folder")
     
-    def read(self,fileName):
-      if fileName in self.childfiles:
-        file=self.childfiles[fileName]
-        print(file.read())
-      else:
-        print("File Not Found!")
-        
-    def write(self,fileName):
-      
-        if fileName in self.childfiles:
-            file=self.childfiles[fileName]
-            textBytes=input("Enter Data:")
-            textBytes=textBytes.encode("utf-8")
-            file.write(textBytes)
-        else:
-            print("File Not Found!")
+    
 
-    def move_file(self,fileName,from_,to,size):
-        if fileName in self.childfiles:
-            file=self.childfiles[fileName]
-            file.move(from_,to,size)
-        else:
-            print("File Not Found!")
+
 # Stores updated directory data and closes program
 def end_program(currentDir):
 
@@ -172,11 +207,9 @@ if __name__ == "__main__":
     commandDic = {
         'mkdir' :  Directory.mkdir,
         'rmdir' :  Directory.rmdir,
-        'mkfile' : Directory.mkfile,
-        'rmfile' : Directory.rmfile,
-        'read'  :  Directory.read,
-        'write':   Directory.write,
-        'move' :   Directory.move_file
+        'mkfile':  Directory.mkfile,
+        'rmfile':  Directory.rmfile,
+        'open'  :  Directory.open_
     }
 
     print('''
@@ -212,11 +245,6 @@ if __name__ == "__main__":
                 elif args[1] in currentDir.childdir:
                     currentDir = currentDir.childdir[args[1]]
                 else: print("Folder not found.")
-            elif len(args)==5:
-                if args[0] in commandDic:
-                    commandDic[args[0]](currentDir,args[1],args[2],args[3],args[4])
-                else:
-                    print("No such command found!")
             elif args[0] in commandDic:
                 commandDic[args[0]](currentDir, args[1])
             else:

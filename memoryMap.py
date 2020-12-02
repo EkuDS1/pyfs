@@ -1,7 +1,7 @@
 import json
 
 # Loading json file (directories) in the dictionary
-directories_structure = open("data.json")
+directories_structure = open("")
 directories_structure = json.load(directories_structure)
 
 # Updating directory structure to print a tree structure
