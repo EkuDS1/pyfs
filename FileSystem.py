@@ -5,9 +5,10 @@ import os.path
 import sys
 from bitarray import bitarray
 chunk_size=256
-size=1024*10
+size=1024*2
 
-
+# FileSystem contains the file stream between the program and the disk file
+# It also contains information on which chunks have been allocated
 class FileSystem:
 
     def __init__(self, diskstream):      
@@ -33,13 +34,14 @@ class FileSystem:
             # set all bytes of chunk to 0x00
             self.virtualHardDisk.write(bytes.fromhex('00'*chunk_size))
 
+    # Returns an array of currently free chunks, given the number of chunks the caller wants
     def lookFreeSpace(self, chunks):
       i=0
       parts=list()
       for chunk in range(0, chunks):
         # Skip used chunks
         while(self.bitArray[i]==True):
-          i+=1
+            i+=1
         # Append unused chunks
         parts.append(i)
         i+=1
@@ -52,10 +54,10 @@ class FileSystem:
         additionalLength=0
         if to>finalWrite:
           additionalLength=to-finalWrite
-        
+
         chunkLength=(len(chunks)*chunk_size)+StartingAddress
         remainingSpace=chunkLength-to
-        
+
         if to<chunkLength:
           self.virtualHardDisk.seek(to)
           if len(input)<remainingSpace:
@@ -69,7 +71,7 @@ class FileSystem:
             input = input[remainingSpace+1:len(input)+1]
             chunks_needed=math.ceil(len(input)/chunk_size)
             chunks+=self.lookFreeSpace(chunks_needed)
-
+                
                 
         initial_write=0
 
@@ -99,20 +101,29 @@ class FileSystem:
         if len(chunks)>0:
           initial_seek=(chunks[0]*chunk_size)+length
           self.virtualHardDisk.seek(initial_seek)
-          # Check if the size of our input is greater than the space we have left in the last chunk
         
+        # Check if the size of our input is greater than the space we have left in the last chunk
         remainingSpace = (len(chunks) * chunk_size) - length
+
+        # Here, input is bigger than the space we already have
         if sys.getsizeof(input) > remainingSpace:
-            # Here, input is bigger than the space we already have
-            # Separate part of input that can fit in the space and write it
+            # Check if we have enough extra chunks to allocate, otherwise handle exception
+            chunks_needed=math.ceil(len(input[remainingSpace:])/chunk_size)
+            try:
+                chunks+=self.lookFreeSpace(chunks_needed)
+            except IndexError:
+                print("Error! No more space on disk for input. Please delete a file.")
+                # Returns chunks and length of file as-is
+                return chunks, length
+
+            # Separate part of input that can fit in the last chunk and write it
             self.virtualHardDisk.write(input[0:remainingSpace])
             length+=len(input[0:remainingSpace])
             # Write the rest just like a new file
             input = input[remainingSpace:]
-            chunks_needed=math.ceil(len(input)/chunk_size)
-            chunks+=self.lookFreeSpace(chunks_needed)
-        else:
-            # Here, input will fit in the space we already have
+
+        # Here, input will fit in the space we already have
+        else:   
             self.virtualHardDisk.write(input)
             length += len(input)
             return chunks, length
@@ -141,10 +152,10 @@ class FileSystem:
 
     def move_within_file(self,from_,to,size,chunks,length):
         startingAddress=chunks[0]*chunk_size
-        finalWrite=startingAddress+length
+        lastChar=startingAddress+length
         additionalLength=0
-        if(to>finalWrite):
-          print(finalWrite)
+        if(to>lastChar):
+          print(lastChar)
           additionalLength=to-from_
           length+=additionalLength
         
@@ -170,37 +181,9 @@ class FileSystem:
         return outputString
 
     def read_at(self,chunks,at, readSize):
-        outputString=""
-        startingAddress = chunks[0] * chunk_size
-        at = at + startingAddress
+        outputString= self.Read_from_File(chunks)
 
-        
-
-        if at == startingAddress:
-            firstChunk = math.ceil(at / chunk_size) + 1
-        else:
-            firstChunk = math.ceil(at / chunk_size)
-
-        lastChunk = math.ceil((at + readSize)/chunk_size)
-
-        self.virtualHardDisk.seek(at)
-        
-        # if we only need to read from one chunk
-        if firstChunk == lastChunk:
-            outputString+=self.virtualHardDisk.read(readSize).decode("utf-8").rstrip("\x00")
-        # if we need to read from more than one chunk
-        else:
-            firstRead = chunk_size * firstChunk - at
-            outputString+=self.virtualHardDisk.read(firstRead).decode("utf-8").rstrip("\x00")
-
-            for chunk in chunks[firstChunk:lastChunk]:
-                self.virtualHardDisk.seek(chunk*chunk_size)
-                outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
-            
-            lastRead = (chunk_size * lastChunk) - (at + readSize)
-            outputString+=self.virtualHardDisk.read(lastRead).decode("utf-8").rstrip("\x00")
-
-            
+        outputString = outputString[at:readSize+1]
 
         print(len(outputString))
         return outputString

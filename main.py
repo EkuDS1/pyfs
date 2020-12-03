@@ -5,18 +5,19 @@ import os.path
 from bitarray import bitarray
 
 chunk_size=256
-size=1024*10
+size=1024*2
 
 class File:
-    def __init__(self, name):
+    def __init__(self, name, fileChunks):
         self.name = name
-        self.chunks = fs.allocateFile()
+        self.chunks = fileChunks
         self.length = 0
 
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
     
-    def write_at(self, at, input_):
+    def write_at(self, at):
+            input_ = input('Enter Data: ')
             input_=input_.encode("utf-8")
 
             chunksAndLength=fs.write_at(self.chunks,self.length,input_,int(at))
@@ -24,8 +25,9 @@ class File:
             self.length = chunksAndLength[1]
             
     def write(self):
-            input_=input("Enter Data:")
+            input_ = input('Enter Data: ')
             input_=input_.encode("utf-8")
+            
             chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
@@ -36,11 +38,10 @@ class File:
     def read_at(self, at, readSize):
         at = int(at)
         readSize = int(readSize)
-        if (at + readSize) <= self.length and (at + readSize) >=0:
+        if (at + readSize) <= self.length and at >=0 and readSize >=0:
             print(fs.read_at(self.chunks,at, readSize))
         else:
             print("Error: Trying to read outside of file!")
-            print(self.length)
 
     def move_in(self, fromAddr, toAddr, selectionSize):
 
@@ -88,7 +89,12 @@ class Directory:
         if filename in self.childfiles:
             print("File already exists!")
         else:
-            self.childfiles[filename] = File(filename)
+            try:
+                fileChunks = fs.allocateFile()
+            except (IndexError):
+                print("Error! No more space on disk. Please delete a file.")
+                return
+            self.childfiles[filename] = File(filename, fileChunks)
         
     
     # Delete file
@@ -127,23 +133,34 @@ class Directory:
             print('''
                 Choose an operation to perform on the file: 
                     read
-                    write 
-                    write_at [address in file] [input]
+                    write
+                    write_at [address in file]
                     read_at [address in file] [size]
                     move [from address] [to address] [size]
                 ''')
             while flag!=1:
                 fileargs=input("Operation: ").split()
 
-                if fileargs[0]=="close":
+                # Do nothing if empty input is entered
+                if fileargs == []:
+                    continue
+                if fileargs[0]=="close" and len(fileargs) == 1:
                     flag=self.close(filename)
                 elif fileargs[0] in fileDic:
-                    if len(fileargs) == 1:
-                        fileDic[fileargs[0]]()
-                    elif len(fileargs) == 3:
-                        fileDic[fileargs[0]](fileargs[1], fileargs[2])
-                    elif len(fileargs) == 4:
-                        fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
+                    try:
+                        if len(fileargs) == 1:
+                            fileDic[fileargs[0]]()
+                        elif len(fileargs) == 2:
+                            fileDic[fileargs[0]](fileargs[1])
+                        elif len(fileargs) == 3:
+                            fileDic[fileargs[0]](fileargs[1], fileargs[2])
+                        elif len(fileargs) == 4:
+                            fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
+                        else:
+                            print("Error: Please enter correct arguments.")
+                    except TypeError:
+                        print("Error: Please enter correct arguments.")
+                        
                 else:
                     print("Invalid Command!")
             
@@ -242,7 +259,7 @@ if __name__ == "__main__":
     # Otherwise, create hard drive and root folder with parent set to None
     else:
         with open("fs.data","wb") as out:
-            out.truncate(1024*10)
+            out.truncate(size)
             bitArray=bitarray(int(size/chunk_size))
             bitArray.setall(0)
             bitArray[0:4]=True
@@ -284,23 +301,30 @@ if __name__ == "__main__":
         # To get arguments to the commands, we split the input into a maximum of 5 parts
         args = input(currentDir.getPath() + ': ').split(' ', 5)
 
-        # Here, args[0] is the command itself while args[1] onwards should be its string argument 
-        if args[0] == 'exit':
+        # Do nothing if empty input is entered
+        if args == ['']:
+            continue
+
+        # Here, args[0] is the command itself while args[1] onwards should be its string argument
+        elif args[0] == 'exit' and len(args) == 1:
             end_program()
 
-        elif args[0] == 'cd':
+        elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
 
         elif args[0] in commandDic:
-            if len(args) == 1:
-                commandDic[args[0]](currentDir)
-            elif len(args) == 2:
-                commandDic[args[0]](currentDir, args[1])
-            elif len(args) == 3:
-                commandDic[args[0]](currentDir, args[1], args[2])
-            elif len(args) == 5:
-                commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
-            else: print("Argument Error!")
+            try:
+                if len(args) == 1:
+                    commandDic[args[0]](currentDir)
+                elif len(args) == 2:
+                    commandDic[args[0]](currentDir, args[1])
+                elif len(args) == 3:
+                    commandDic[args[0]](currentDir, args[1], args[2])
+                elif len(args) == 5:
+                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
+                else: print("Argument Error!")
+            except TypeError:
+                print("Error: Please only enter required arguments.")  
         else:
             print("ERROR: No such command found!")
             
