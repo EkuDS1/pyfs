@@ -5,7 +5,7 @@ import os.path
 from bitarray import bitarray
 
 chunk_size=256
-size=1024*2
+size=1024*10
 
 class File:
     def __init__(self, name, fileChunks):
@@ -17,12 +17,16 @@ class File:
         fs.deallocateFile(self.chunks)
     
     def write_at(self, at):
-            input_ = input('Enter Data: ')
-            input_=input_.encode("utf-8")
-
-            chunksAndLength=fs.write_at(self.chunks,self.length,input_,int(at))
-            self.chunks = chunksAndLength[0]
-            self.length = chunksAndLength[1]
+            at=int(at)
+            if at>=0 and at<len(self.chunks)*chunk_size:
+                input_ = input('Enter Data: ')
+                input_=input_.encode("utf-8")
+                chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
+                self.chunks = chunksAndLength[0]
+                self.length = chunksAndLength[1]
+            else:
+                print("Please enter a location inside the file!")
+            
             
     def write(self):
             input_ = input('Enter Data: ')
@@ -51,11 +55,8 @@ class File:
         
         total_size=len(self.chunks)*chunk_size
 
-        startingAddress=self.chunks[0]*chunk_size
-
+        
         if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
-            fromAddr = startingAddress + fromAddr
-            toAddr = startingAddress + toAddr
             self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
         else:
             print("Out Of File Index!")
@@ -158,7 +159,8 @@ class Directory:
                             fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
                         else:
                             print("Error: Please enter correct arguments.")
-                    except TypeError:
+                    except TypeError as e:
+                        print("TypeError:",e.args)
                         print("Error: Please enter correct arguments.")
                         
                 else:
