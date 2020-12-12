@@ -3,9 +3,11 @@ from FileSystem import FileSystem
 import pickle
 import os.path
 from bitarray import bitarray
+import sys
 
 chunk_size=256
 size=1024*2
+dirChunks = 4
 
 class File:
     def __init__(self, name, fileChunks):
@@ -73,6 +75,11 @@ class Directory:
             print("Folder already exists!")
         else:
             self.childdir[dirname] = Directory(dirname, self)
+            
+            if dirTooBig():
+                print("Error! Directory table too large. Cannot create directory.")
+                self.rmdir(dirname)
+                return
     
     # Delete directory
     def rmdir(self, dirname):
@@ -95,6 +102,14 @@ class Directory:
                 print("Error! No more space on disk. Please delete a file.")
                 return
             self.childfiles[filename] = File(filename, fileChunks)
+            
+            # Compress and serialize entire directory tree and check if it's too big to fit in the given chunks
+            bytesToStore = pickle.dumps((root, fs.getBitArray()),pickle.HIGHEST_PROTOCOL)
+
+            if dirTooBig():
+                print("Error! Directory table too large. Cannot create file.")
+                self.rmfile(filename)
+                return
         
     
     # Delete file
@@ -204,6 +219,14 @@ class Directory:
             print(prefix+"<dir>", self.childdir[directory].name)
             self.childdir[directory].memorymap(prefix+"|  ")
 
+# Utility function which checks if the directory structure is too big to be stored on the given chunks
+def dirTooBig():
+    bytesToStore = pickle.dumps((root, fs.getBitArray()),pickle.HIGHEST_PROTOCOL)
+    if sys.getsizeof(bytesToStore) > (dirChunks * chunk_size):
+        return True
+    else: 
+        return False
+
 # returns Directory object based on the current directory and the given path
 def cd(currentDirInput, pathArr):
 
@@ -236,7 +259,7 @@ def cd(currentDirInput, pathArr):
 def end_program():
     # go to root
     currentDir = root
-
+    
     # store directory data as a binary file
     with open('fs.data', 'r+b') as fileOut:
         pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
@@ -252,6 +275,7 @@ if __name__ == "__main__":
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
         with open('fs.data', 'r+b') as fileIn:
+            # Loads tuple containing both Directory and bitarray objects
             dirAndBitArray= pickle.load(fileIn)
             currentDir = dirAndBitArray[0]
             bitArray = dirAndBitArray[1]
@@ -262,7 +286,7 @@ if __name__ == "__main__":
             out.truncate(size)
             bitArray=bitarray(int(size/chunk_size))
             bitArray.setall(0)
-            bitArray[0:4]=True
+            bitArray[0:dirChunks]=True
             currentDir = Directory('root', None)
     fs = FileSystem(open('fs.data', 'r+b'))
     fs.setBitArray(bitArray)

@@ -5,7 +5,6 @@ import os.path
 import sys
 from bitarray import bitarray
 chunk_size=256
-size=1024*2
 
 # FileSystem contains the file stream between the program and the disk file
 # It also contains information on which chunks have been allocated
