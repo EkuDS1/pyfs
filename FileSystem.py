@@ -7,7 +7,6 @@ from bitarray import bitarray
 
 chunk_size=256
 
-
 # FileSystem contains the file stream between the program and the disk file
 # It also contains information on which chunks have been allocated
 class FileSystem:
