@@ -4,6 +4,7 @@ import math
 import os.path
 import sys
 from bitarray import bitarray
+
 chunk_size=256
 
 # FileSystem contains the file stream between the program and the disk file
@@ -47,23 +48,33 @@ class FileSystem:
       return parts
 
     def write_at(self,chunks,length,input,to):
-        StartingAddress=chunks[0]*chunk_size 
-        finalWrite=StartingAddress+length
-        to=StartingAddress+to
+        #Calculates which chunk is [to] in
+        inWhichChunk=math.floor(to/chunk_size)
+        #StartingAddress of that chunk 
+        startingChunkAddr=chunks[inWhichChunk]*chunk_size
+        #Calculate [to]  relative to that starting Address
+        toRelative=to-len(chunks[:inWhichChunk])*chunk_size
+        #Physical Address of where user wants to write
+        toPhysical=toRelative+startingChunkAddr
+        
+        lastChar=length
         additionalLength=0
-        if to>finalWrite:
-          additionalLength=to-finalWrite
+        #If [to] is after lastCharacter then calculate the number of spaces in between
+        if to>lastChar:
+          additionalLength=to-lastChar
 
-        chunkLength=(len(chunks)*chunk_size)+StartingAddress
+        chunkLength=(len(chunks)*chunk_size)
+        #Remaining Space in last chunk
         remainingSpace=chunkLength-to
 
         if to<chunkLength:
-          self.virtualHardDisk.seek(to)
+          self.virtualHardDisk.seek(toPhysical)
+          #If input fits in remaining space then fit it in 
           if len(input)<remainingSpace:
             self.virtualHardDisk.write(input)
             length+=len(input)+additionalLength
             return chunks,length
-          else:
+          else: #Else fit what it can in the space
             self.virtualHardDisk.write(input[0:remainingSpace])
             length+=len(input[0:remainingSpace])
             # Write the rest just like a new file
@@ -96,9 +107,16 @@ class FileSystem:
 
     def Write_to_File(self, chunks, length, input):
         initial_seek=0
+        
         # Check if file is written or not
+        inWhichChunk=math.floor(length/chunk_size)
+        if length%256==0:
+            inWhichChunk-=1
+        startingChunkAddr=chunks[inWhichChunk]*chunk_size
+        lengthRelative=length-len(chunks[:inWhichChunk])*chunk_size
+        lengthPhysical=lengthRelative+startingChunkAddr
         if len(chunks)>0:
-          initial_seek=(chunks[0]*chunk_size)+length
+          initial_seek=lengthPhysical
           self.virtualHardDisk.seek(initial_seek)
         
         # Check if the size of our input is greater than the space we have left in the last chunk
@@ -148,23 +166,35 @@ class FileSystem:
                 length+=len(input)-initial_write
         return chunks, length
 
-
+    
     def move_within_file(self,from_,to,size,chunks,length):
-        startingAddress=chunks[0]*chunk_size
-        lastChar=startingAddress+length
+
+        #Calculate in which chunk is [to] and [from]
+        inWhichChunkTo=math.floor(to/chunk_size)
+        startingChunkAddrTo=chunks[inWhichChunkTo]*chunk_size
+        inWhichChunkFrom=math.floor(from_/chunk_size)
+        startingChunkAddrFrom=chunks[inWhichChunkFrom]*chunk_size
+        #Calculate address of [to] [from] relative to starting chunk 
+        to_Relative=to-len(chunks[:inWhichChunkTo])*chunk_size
+        from_Relative=from_-len(chunks[:inWhichChunkFrom])*chunk_size
+
+        to_Physical=to_Relative+startingChunkAddrTo
+        from_Physical=from_Relative+startingChunkAddrFrom
+
         additionalLength=0
-        if(to>lastChar):
-          print(lastChar)
+        #If [to] is greater than last character then calculate number of spaces in between
+        if(to>length):
+          print(length)
           additionalLength=to-from_
           length+=additionalLength
         
-        self.virtualHardDisk.seek(from_)
+        self.virtualHardDisk.seek(from_Physical)
         textBytes=self.virtualHardDisk.read(size)
-        self.virtualHardDisk.seek(from_)
+        self.virtualHardDisk.seek(from_Physical)
         empty=" "*int(size)
         empty=empty.encode('utf-8')
         self.virtualHardDisk.write(empty)
-        self.virtualHardDisk.seek(to)
+        self.virtualHardDisk.seek(to_Physical)
         self.virtualHardDisk.write(textBytes)
         print("Move Operation Completed!")
         return length
@@ -173,6 +203,7 @@ class FileSystem:
     def Read_from_File(self, chunks):
         outputString=""
         print(chunks)
+        #Go into their chunks and read complete chunks, strip the empty bytes.
         for chunk in chunks:
             self.virtualHardDisk.seek(chunk*chunk_size)
             outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
@@ -181,16 +212,16 @@ class FileSystem:
 
     def read_at(self,chunks,at, readSize):
         outputString= self.Read_from_File(chunks)
-
+        #Call read and split into [at:size]
         outputString = outputString[at:readSize+1]
 
         print(len(outputString))
         return outputString
 
 
-
+    #Setter
     def setBitArray(self,bitArray):
-        self.bitArray=bitArray
-        
+        self.bitArray=bitArray 
+    #Getter        
     def getBitArray(self):
         return self.bitArray
