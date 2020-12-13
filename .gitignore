@@ -3,3 +3,4 @@ __pycache__/
 testfile
 fs.data
 stdin-scripts/
+stdout-scripts/

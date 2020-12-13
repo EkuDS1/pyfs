@@ -4,6 +4,7 @@ import pickle
 import os.path
 from bitarray import bitarray
 import sys
+import threading
 
 chunk_size=256
 size=1024*10
@@ -257,6 +258,49 @@ def cd(currentDirInput, pathArr):
     
     return tempDir
 
+
+def run(currentDir,file):
+    #Stdin should not be accessed by multiple threads
+    #as it will cause file inputs to mix and cause crashes
+    #so stdin will be locked by each thread when its used. 
+    
+    #stdin to take input from a file
+    stdinLock.acquire()
+    sys.stdin=open("stdin-scripts/"+file,'r')
+    #stdout to output to a file
+    sys.stdout=open("stdout-scripts/"+file,"w")
+    
+    while True:
+        # Prints the current path and gets input
+        # To get arguments to the commands, we split the input into a maximum of 5 parts
+        args = input(currentDir.getPath() + ': ').split(' ', 5)
+        # Do nothing if empty input is entered
+        if args == ['']:
+            continue
+        # Here, args[0] is the command itself while args[1] onwards should be its string argument
+        elif args[0] == 'exit' and len(args) == 1:
+            end_program()
+            stdinLock.release()
+            break
+        elif args[0] == 'cd' and len(args) == 2:
+            currentDir = cd(currentDir, args[1].split('/'))
+        elif args[0] in commandDic:
+            try:
+               if len(args) == 1:
+                   commandDic[args[0]](currentDir)
+               elif len(args) == 2:
+                   commandDic[args[0]](currentDir, args[1])
+               elif len(args) == 3:
+                   commandDic[args[0]](currentDir, args[1], args[2])
+               elif len(args) == 5:
+                   commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
+               else: print("Argument Error!")
+            except TypeError:
+                print("Error: Please only enter required arguments.")  
+        else:
+            print("ERROR: No such command found!")
+    
+        
 # Stores updated directory data and closes program
 def end_program():
     # go to root
@@ -267,7 +311,7 @@ def end_program():
         pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
         
     print("\n************ Program Closed ************")
-    exit(0) # exit status 0 indicating that program closed without problems
+    
     
 
 ################################## Main Code starts from here ##################################
@@ -321,37 +365,17 @@ if __name__ == "__main__":
 
         exit to EXIT
         ''')
+    #Create a shared lock
+    stdinLock=threading.Lock()
+    if(len(sys.argv)!=2):
+        print("Please enter number of threads!")
+        exit(0)
+    thr=int(sys.argv[1])
 
-    while True:  
-        # Prints the current path and gets input
-        # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = input(currentDir.getPath() + ': ').split(' ', 5)
-
-        # Do nothing if empty input is entered
-        if args == ['']:
-            continue
-
-        # Here, args[0] is the command itself while args[1] onwards should be its string argument
-        elif args[0] == 'exit' and len(args) == 1:
-            end_program()
-
-        elif args[0] == 'cd' and len(args) == 2:
-            currentDir = cd(currentDir, args[1].split('/'))
-
-        elif args[0] in commandDic:
-            try:
-                if len(args) == 1:
-                    commandDic[args[0]](currentDir)
-                elif len(args) == 2:
-                    commandDic[args[0]](currentDir, args[1])
-                elif len(args) == 3:
-                    commandDic[args[0]](currentDir, args[1], args[2])
-                elif len(args) == 5:
-                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
-                else: print("Argument Error!")
-            except TypeError:
-                print("Error: Please only enter required arguments.")  
-        else:
-            print("ERROR: No such command found!")
-            
-            
+    threads=list()
+    for i in range(thr):
+        thread=threading.Thread(target=run,args=(currentDir,f"script{i}.txt"))#Creating threads
+        threads.append(thread)
+        thread.start()
+    for thread in threads:
+        thread.join()#waiting for threads to finish
