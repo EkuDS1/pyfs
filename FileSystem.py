@@ -4,8 +4,10 @@ import math
 import os.path
 import sys
 from bitarray import bitarray
+import threading
 
 chunk_size=256
+threadLocal = threading.local()
 
 # FileSystem contains the file stream between the program and the disk file
 # It also contains information on which chunks have been allocated
@@ -129,7 +131,7 @@ class FileSystem:
             try:
                 chunks+=self.lookFreeSpace(chunks_needed)
             except IndexError:
-                print("Error! No more space on disk for input. Please delete a file.")
+                threadLocal.ioh.output("Error! No more space on disk for input. Please delete a file.")
                 # Returns chunks and length of file as-is
                 return chunks, length
 
@@ -184,7 +186,7 @@ class FileSystem:
         additionalLength=0
         #If [to] is greater than last character then calculate number of spaces in between
         if(to>length):
-          print(length)
+          threadLocal.ioh.output(length)
           additionalLength=to-from_
           length+=additionalLength
         
@@ -196,18 +198,18 @@ class FileSystem:
         self.virtualHardDisk.write(empty)
         self.virtualHardDisk.seek(to_Physical)
         self.virtualHardDisk.write(textBytes)
-        print("Move Operation Completed!")
+        threadLocal.ioh.output("Move Operation Completed!")
         return length
 
 
     def Read_from_File(self, chunks):
         outputString=""
-        print(chunks)
+        threadLocal.ioh.output(chunks)
         #Go into their chunks and read complete chunks, strip the empty bytes.
         for chunk in chunks:
             self.virtualHardDisk.seek(chunk*chunk_size)
             outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
-        print("Length: {}".format(len(outputString)))
+        threadLocal.ioh.output("Length: {}".format(len(outputString)))
         return outputString
 
     def read_at(self,chunks,at, readSize):
@@ -215,7 +217,7 @@ class FileSystem:
         #Call read and split into [at:size]
         outputString = outputString[at:readSize+1]
 
-        print(len(outputString))
+        threadLocal.ioh.output(len(outputString))
         return outputString
 
 

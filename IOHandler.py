@@ -8,7 +8,10 @@ class IOHandler:
         print(prompt, file=self.ostream)
 
         # Return next line in input stream
-        return self.istream.readline()
+        return self.istream.readline().rstrip("\n")
+
+    def output(self,output_string):
+        print(output_string,file = self.ostream)
 
     def __del__(self):
         self.istream.close()

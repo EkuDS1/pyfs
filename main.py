@@ -1,5 +1,5 @@
 # pickle is used to store objects
-from FileSystem import FileSystem
+from FileSystem import FileSystem, threadLocal
 from IOHandler import IOHandler
 import pickle
 import os.path
@@ -20,20 +20,20 @@ class File:
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
     
-    def write_at(self, at, ioh):
+    def write_at(self, at):
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = ioh.input('Enter Data: ')
+                input_ = threadLocal.ioh.input('Enter Data: ')
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
                 self.chunks = chunksAndLength[0]
                 self.length = chunksAndLength[1]
             else:
-                print("Please enter a location inside the file!")
+                threadLocal.ioh.output("Please enter a location inside the file!")
             
             
-    def write(self, ioh):
-            input_ = ioh.input('Enter Data: ')
+    def write(self):
+            input_ = threadLocal.ioh.input('Enter Data: ')
             input_=input_.encode("utf-8")
             
             chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
@@ -41,15 +41,15 @@ class File:
             self.length = chunksAndLength[1]
             
     def read(self):
-        print(fs.Read_from_File(self.chunks))
+        threadLocal.ioh.output(fs.Read_from_File(self.chunks))
 
     def read_at(self, at, readSize):
         at = int(at)
         readSize = int(readSize)
         if (at + readSize) <= self.length and at >=0 and readSize >=0:
-            print(fs.read_at(self.chunks,at, readSize))
+            threadLocal.ioh.output(fs.read_at(self.chunks,at, readSize))
         else:
-            print("Error: Trying to read outside of file!")
+            threadLocal.ioh.output("Error: Trying to read outside of file!")
 
     def move_in(self, fromAddr, toAddr, selectionSize):
 
@@ -63,7 +63,7 @@ class File:
         if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
             self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
         else:
-            print("Out Of File Index!")
+            threadLocal.ioh.output("Out Of File Index!")
 
 class Directory:
     def __init__(self, name, parent):
@@ -75,12 +75,12 @@ class Directory:
     # Create directory
     def mkdir(self, dirname):
         if dirname in self.childdir:
-            print("Folder already exists!")
+            threadLocal.ioh.output("Folder already exists!")
         else:
             self.childdir[dirname] = Directory(dirname, self)
             
             if dirTooBig():
-                print("Error! Directory table too large. Cannot create directory.")
+                threadLocal.ioh.output("Error! Directory table too large. Cannot create directory.")
                 self.rmdir(dirname)
                 return
     
@@ -90,19 +90,19 @@ class Directory:
             if not self.childdir[dirname].childfiles:
                 del self.childdir[dirname]
             else:
-                print("This folder contains files!")
+                threadLocal.ioh.output("This folder contains files!")
         else:
-            print("No such folder found to delete")
+            threadLocal.ioh.output("No such folder found to delete")
     
     # Create file
     def mkfile(self, filename):
         if filename in self.childfiles:
-            print("File already exists!")
+            threadLocal.ioh.output("File already exists!")
         else:
             try:
                 fileChunks = fs.allocateFile()
             except (IndexError):
-                print("Error! No more space on disk. Please delete a file.")
+                threadLocal.ioh.output("Error! No more space on disk. Please delete a file.")
                 return
             self.childfiles[filename] = File(filename, fileChunks)
             
@@ -110,7 +110,7 @@ class Directory:
             bytesToStore = pickle.dumps((root, fs.getBitArray()),pickle.HIGHEST_PROTOCOL)
 
             if dirTooBig():
-                print("Error! Directory table too large. Cannot create file.")
+                threadLocal.ioh.output("Error! Directory table too large. Cannot create file.")
                 self.rmfile(filename)
                 return
         
@@ -121,23 +121,23 @@ class Directory:
             self.childfiles[filename].deleteFile()
             del self.childfiles[filename]
         else:
-            print("No such file found to delete")
+            threadLocal.ioh.output("No such file found to delete")
 
     # Move file to another folder
     def mvfile(self, filename, path):
         if filename in self.childfiles:
             newDir = cd(self, path.split('/'))
             if newDir == self:
-                print("Error: Move operation failed!")
+                threadLocal.ioh.output("Error: Move operation failed!")
                 return
             newDir.childfiles[filename] = self.childfiles[filename]
             del self.childfiles[filename]
         else:
-            print("No such file found to move")
+            threadLocal.ioh.output("No such file found to move")
             return
 
     # set mode bits and return File object
-    def open_(self, filename, ioh):
+    def open_(self, filename):
         flag=0
         if filename in self.childfiles:
             file=self.childfiles[filename]
@@ -148,7 +148,7 @@ class Directory:
                 'write_at'  :  file.write_at,
                 'read_at'   :  file.read_at
             }
-            print('''
+            threadLocal.ioh.output('''
                 Choose an operation to perform on the file: 
                     read
                     write
@@ -157,7 +157,7 @@ class Directory:
                     move [from address] [to address] [size]
                 ''')
             while flag!=1:
-                fileargs=ioh.input("Operation: ").split()
+                fileargs=threadLocal.ioh.input("Operation: ").split()
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -167,13 +167,10 @@ class Directory:
                 elif fileargs[0] in fileDic:
                     try:
                         if len(fileargs) == 1:
-                            if fileargs[0] == 'write':
-                                fileDic[fileargs[0]](ioh)
-                            else:
-                                fileDic[fileargs[0]]()
+                            fileDic[fileargs[0]]()
                         elif len(fileargs) == 2:
                             if fileargs[0] == 'write_at':
-                                fileDic[fileargs[0]](fileargs[1], ioh)
+                                fileDic[fileargs[0]](fileargs[1])
                             else:
                                 fileDic[fileargs[0]](fileargs[1])
                         elif len(fileargs) == 3:
@@ -181,17 +178,17 @@ class Directory:
                         elif len(fileargs) == 4:
                             fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
                         else:
-                            print("Error: Please enter correct arguments.")
+                            threadLocal.ioh.output("Error: Please enter correct arguments.")
                     except TypeError as e:
-                        print("TypeError:",e.args)
-                        print("Error: Please enter correct arguments.")
+                        threadLocal.ioh.output("TypeError:",e.args)
+                        threadLocal.ioh.output("Error: Please enter correct arguments.")
                         
                 else:
-                    print("Invalid Command!")
+                    threadLocal.ioh.output("Invalid Command!")
             
             
         else:
-            print("File Not Found!")
+            threadLocal.ioh.output("File Not Found!")
         
     # clear mode bits
     def close(self, filename):
@@ -212,21 +209,21 @@ class Directory:
     def ls(self):
         if self.childdir:
             for dirname in self.childdir.keys():
-                print(f'\t<DIR>\t{dirname}')
+                threadLocal.ioh.output(f'\t<DIR>\t{dirname}')
         if self.childfiles:
             for filename in self.childfiles.keys():
-                print(f'\t\t{filename}\t')
+                threadLocal.ioh.output(f'\t\t{filename}\t')
         if not self.childdir and not self.childfiles:
-            print("Empty Folder")
+            threadLocal.ioh.output("Empty Folder")
     
     def memorymap(self, prefix=""):
         if prefix=="":
-            print(self.name)
+            threadLocal.ioh.output(self.name)
             prefix = "|  "
         for file in self.childfiles:
-            print(prefix+"<file>",self.childfiles[file].name, str( [element * 256 for element in self.childfiles[file].chunks ]))
+            threadLocal.ioh.output(prefix+"<file>",self.childfiles[file].name, str( [element * 256 for element in self.childfiles[file].chunks ]))
         for directory in self.childdir:
-            print(prefix+"<dir>", self.childdir[directory].name)
+            threadLocal.ioh.output(prefix+"<dir>", self.childdir[directory].name)
             self.childdir[directory].memorymap(prefix+"|  ")
 
 # Utility function which checks if the directory structure is too big to be stored on the given chunks
@@ -258,26 +255,26 @@ def cd(currentDirInput, pathArr):
             tempDir = cd(tempDir.parent, pathArr[1:])
         else:
             tempDir = currentDir
-            print("Root has no parent folder.")
+            threadLocal.ioh.output("Root has no parent folder.")
     else:
         tempDir = currentDir
-        print("Folder not found.")
+        threadLocal.ioh.output("Folder not found.")
     
     return tempDir
-
 
 def run(currentDir,file):
     #Stdin should not be accessed by multiple threads
     #as it will cause file inputs to mix and cause crashes
     #so stdin will be locked by each thread when its used. 
 
-
-    ioh = IOHandler("stdin-scripts/"+file, "stdout-scripts/"+file)
+    ioh = getattr(threadLocal, 'ioh', None)
+    if ioh is None:
+        threadLocal.ioh = IOHandler("stdin-scripts/"+file, "stdout-scripts/"+file)
     
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = ioh.input(currentDir.getPath() + ': ').split(' ', 5)
+        args = threadLocal.ioh.input(currentDir.getPath() + ': ').split(' ', 5)
         # Do nothing if empty input is entered
         if args == ['']:
             continue
@@ -287,25 +284,22 @@ def run(currentDir,file):
             break
         elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
+
         elif args[0] in commandDic:
             try:
                if len(args) == 1:
                    commandDic[args[0]](currentDir)
                elif len(args) == 2:
-                   if args[0] == 'open':
-                       commandDic[args[0]](currentDir, args[1], ioh)
-                   else:
-                       commandDic[args[0]](currentDir, args[1])
+                    commandDic[args[0]](currentDir, args[1])
                elif len(args) == 3:
                    commandDic[args[0]](currentDir, args[1], args[2])
                elif len(args) == 5:
                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
-               else: print("Argument Error!")
+               else: threadLocal.ioh.output("Argument Error!")
             except TypeError:
-                print("Error: Please only enter required arguments.")  
+                threadLocal.ioh.output("Error: Please only enter required arguments.")  
         else:
-            print("ERROR: No such command found!")
-    
+            threadLocal.ioh.output("ERROR: No such command found! " + args[0] )
         
 # Stores updated directory data and closes program
 def end_program():
@@ -316,10 +310,9 @@ def end_program():
     with open('fs.data', 'r+b') as fileOut:
         pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
         
-    print("\n************ Program Closed ************")
+    threadLocal.ioh.output("\n************ Program Closed ************")
     
     
-
 ################################## Main Code starts from here ##################################
 
 if __name__ == "__main__":
