@@ -1,5 +1,6 @@
 # pickle is used to store objects
 from FileSystem import FileSystem
+from IOHandler import IOHandler
 import pickle
 import os.path
 from bitarray import bitarray
@@ -19,10 +20,10 @@ class File:
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
     
-    def write_at(self, at):
+    def write_at(self, at, ioh):
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = input('Enter Data: ')
+                input_ = ioh.input('Enter Data: ')
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
                 self.chunks = chunksAndLength[0]
@@ -31,8 +32,8 @@ class File:
                 print("Please enter a location inside the file!")
             
             
-    def write(self):
-            input_ = input('Enter Data: ')
+    def write(self, ioh):
+            input_ = ioh.input('Enter Data: ')
             input_=input_.encode("utf-8")
             
             chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
@@ -136,7 +137,7 @@ class Directory:
             return
 
     # set mode bits and return File object
-    def open_(self, filename):
+    def open_(self, filename, ioh):
         flag=0
         if filename in self.childfiles:
             file=self.childfiles[filename]
@@ -156,7 +157,7 @@ class Directory:
                     move [from address] [to address] [size]
                 ''')
             while flag!=1:
-                fileargs=input("Operation: ").split()
+                fileargs=ioh.input("Operation: ").split()
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -166,9 +167,15 @@ class Directory:
                 elif fileargs[0] in fileDic:
                     try:
                         if len(fileargs) == 1:
-                            fileDic[fileargs[0]]()
+                            if fileargs[0] == 'write':
+                                fileDic[fileargs[0]](ioh)
+                            else:
+                                fileDic[fileargs[0]]()
                         elif len(fileargs) == 2:
-                            fileDic[fileargs[0]](fileargs[1])
+                            if fileargs[0] == 'write_at':
+                                fileDic[fileargs[0]](fileargs[1], ioh)
+                            else:
+                                fileDic[fileargs[0]](fileargs[1])
                         elif len(fileargs) == 3:
                             fileDic[fileargs[0]](fileargs[1], fileargs[2])
                         elif len(fileargs) == 4:
@@ -263,24 +270,20 @@ def run(currentDir,file):
     #Stdin should not be accessed by multiple threads
     #as it will cause file inputs to mix and cause crashes
     #so stdin will be locked by each thread when its used. 
-    
-    #stdin to take input from a file
-    stdinLock.acquire()
-    sys.stdin=open("stdin-scripts/"+file,'r')
-    #stdout to output to a file
-    sys.stdout=open("stdout-scripts/"+file,"w")
+
+
+    ioh = IOHandler("stdin-scripts/"+file, "stdout-scripts/"+file)
     
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = input(currentDir.getPath() + ': ').split(' ', 5)
+        args = ioh.input(currentDir.getPath() + ': ').split(' ', 5)
         # Do nothing if empty input is entered
         if args == ['']:
             continue
         # Here, args[0] is the command itself while args[1] onwards should be its string argument
         elif args[0] == 'exit' and len(args) == 1:
             end_program()
-            stdinLock.release()
             break
         elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
@@ -289,7 +292,10 @@ def run(currentDir,file):
                if len(args) == 1:
                    commandDic[args[0]](currentDir)
                elif len(args) == 2:
-                   commandDic[args[0]](currentDir, args[1])
+                   if args[0] == 'open':
+                       commandDic[args[0]](currentDir, args[1], ioh)
+                   else:
+                       commandDic[args[0]](currentDir, args[1])
                elif len(args) == 3:
                    commandDic[args[0]](currentDir, args[1], args[2])
                elif len(args) == 5:
