@@ -3,6 +3,12 @@ import os
 #Create input scripts to test threads, the user must first create
 #folder stdin-scripts and stdout-scripts then run this code
 #to create the input script.
+
+if not os.path.isdir("stdin-scripts"):
+    os.system("mkdir stdin-scripts")
+if not os.path.isdir("stdout-scripts"):
+    os.system("mkdir stdout-scripts")
+    
 for i in range(10):
     with open(f"stdin-scripts/script{i}.txt",mode="w") as file:
         file.write(f"mkfile file{i}\n")
