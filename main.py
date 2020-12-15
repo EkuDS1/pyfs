@@ -1,4 +1,5 @@
 # pickle is used to store objects
+from scriptCreator import scriptCreator
 from FileSystem import FileSystem, threadLocal
 from IOHandler import IOHandler
 import pickle
@@ -364,6 +365,10 @@ if __name__ == "__main__":
 
         exit to EXIT
         ''')
+
+    # Create scripts if they aren't already created
+    if not os.path.isdir("stdin-scripts") or not not os.path.isdir("stdout-scripts"):
+        scriptCreator()
     #Create a shared lock
     stdinLock=threading.Lock()
     if(len(sys.argv)!=2):
