@@ -367,7 +367,7 @@ if __name__ == "__main__":
         ''')
 
     # Create scripts if they aren't already created
-    if not os.path.isdir("stdin-scripts") or not not os.path.isdir("stdout-scripts"):
+    if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
         scriptCreator()
     #Create a shared lock
     stdinLock=threading.Lock()
