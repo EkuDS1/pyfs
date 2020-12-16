@@ -186,7 +186,7 @@ class FileSystem:
         additionalLength=0
         #If [to] is greater than last character then calculate number of spaces in between
         if(to>length):
-          threadLocal.ioh.output(length)
+          threadLocal.ioh.output(str(length))
           additionalLength=to-from_
           length+=additionalLength
         
@@ -204,7 +204,7 @@ class FileSystem:
 
     def Read_from_File(self, chunks):
         outputString=""
-        threadLocal.ioh.output(chunks)
+        threadLocal.ioh.output(str(chunks))
         #Go into their chunks and read complete chunks, strip the empty bytes.
         for chunk in chunks:
             self.virtualHardDisk.seek(chunk*chunk_size)
@@ -217,7 +217,7 @@ class FileSystem:
         #Call read and split into [at:size]
         outputString = outputString[at:readSize+1]
 
-        threadLocal.ioh.output(len(outputString))
+        threadLocal.ioh.output(str(len(outputString)))
         return outputString
 
 

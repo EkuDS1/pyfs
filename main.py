@@ -24,17 +24,18 @@ class File:
     def write_at(self, at):
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = threadLocal.ioh.input('Enter Data: ')
+                input_ = threadLocal.ioh.input('Enter Data: ', end = '')
+                threadLocal.ioh.output(listToString(input_)  )
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
                 self.chunks = chunksAndLength[0]
                 self.length = chunksAndLength[1]
             else:
                 threadLocal.ioh.output("Please enter a location inside the file!")
-            
-            
+                        
     def write(self):
-            input_ = threadLocal.ioh.input('Enter Data: ')
+            input_ = threadLocal.ioh.input('')
+            threadLocal.ioh.output("Enter Data: " + input_  )
             input_=input_.encode("utf-8")
             
             chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
@@ -57,9 +58,7 @@ class File:
         fromAddr = int(fromAddr)
         toAddr = int(toAddr)
         selectionSize = int(selectionSize)
-        
         total_size=len(self.chunks)*chunk_size
-
         
         if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
             self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
@@ -114,8 +113,7 @@ class Directory:
                 threadLocal.ioh.output("Error! Directory table too large. Cannot create file.")
                 self.rmfile(filename)
                 return
-        
-    
+
     # Delete file
     def rmfile(self, filename):
         if filename in self.childfiles:
@@ -149,16 +147,19 @@ class Directory:
                 'write_at'  :  file.write_at,
                 'read_at'   :  file.read_at
             }
-            threadLocal.ioh.output('''
-                Choose an operation to perform on the file: 
-                    read
-                    write
-                    write_at [address in file]
-                    read_at [address in file] [size]
-                    move [from address] [to address] [size]
-                ''')
+### Commented this because dont want to print this in terminal while using threads ###
+
+#            threadLocal.ioh.output('''
+#              Choose an operation to perform on the file: 
+#                    read
+#                    write
+#                    write_at [address in file]
+#                    read_at [address in file] [size]
+#                    move [from address] [to address] [size]
+#                ''')
             while flag!=1:
-                fileargs=threadLocal.ioh.input("Operation: ").split()
+                fileargs=threadLocal.ioh.input('').split()
+                threadLocal.ioh.output("Operation: " + listToString(fileargs))
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -183,11 +184,8 @@ class Directory:
                     except TypeError as e:
                         threadLocal.ioh.output("TypeError:",e.args)
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
-                        
                 else:
                     threadLocal.ioh.output("Invalid Command!")
-            
-            
         else:
             threadLocal.ioh.output("File Not Found!")
         
@@ -275,7 +273,8 @@ def run(currentDir,file):
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = threadLocal.ioh.input(currentDir.getPath() + ': ').split(' ', 5)
+        args = threadLocal.ioh.input('').split(' ', 5)
+        threadLocal.ioh.output( currentDir.getPath() + ': ' + listToString(args) )
         # Do nothing if empty input is entered
         if args == ['']:
             continue
@@ -313,6 +312,11 @@ def end_program():
         
     threadLocal.ioh.output("\n************ Program Closed ************")
     
+def listToString(s):  
+    str1 = ""  
+    for ele in s:  
+        str1 += ele + " "   
+    return str1  
     
 ################################## Main Code starts from here ##################################
 
@@ -351,30 +355,41 @@ if __name__ == "__main__":
         'memmap' : Directory.memorymap
     }
 
-    print('''
-        ls to display available folders
-        mkdir [dirname] to create folder
-        rmdir [dirname] to remove a folder
-        mkfile [filename] to create a file
-        rmfile [filename] to remove a file
-        mvfile [filename] [path] to move file to another folder
-        cd [dirname] to enter the folder
-        Also, 'cd ..' returns to previous folder
+### Commented this because dont want to print this in terminal while using threads ###
 
-        memmap to view memory map of the filesystem
-
-        exit to EXIT
-        ''')
-
+#    print('''
+#        ls to display available folders
+#        mkdir [dirname] to create folder
+#       rmdir [dirname] to remove a folder
+#        mkfile [filename] to create a file
+#        rmfile [filename] to remove a file
+#        mvfile [filename] [path] to move file to another folder
+#        cd [dirname] to enter the folder
+#        Also, 'cd ..' returns to previous folder
+#
+#        memmap to view memory map of the filesystem
+#
+#       exit to EXIT
+#        ''')
+  
     # Create scripts if they aren't already created
     if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
         scriptCreator()
     #Create a shared lock
     stdinLock=threading.Lock()
     if(len(sys.argv)!=2):
-        print("Please enter number of threads!")
+        print ('''\033[93m\033[1m 
+                 Please enter number of threads! Run the code as
+                 " python  [python file name] [No. of threads] \" \033[0;0m''')
         exit(0)
-    thr=int(sys.argv[1])
+
+    try:
+        thr=int(sys.argv[1])
+    except:
+        print ('''\033[93m\033[1m 
+                Please enter the correct command! Run the code as
+                " python [python file name] [No. of threads] \" \033[0;0m''')
+        exit(0)
 
     threads=list()
     for i in range(thr):
@@ -383,3 +398,4 @@ if __name__ == "__main__":
         thread.start()
     for thread in threads:
         thread.join()#waiting for threads to finish
+    print("\n"+'\033[92m'+ '\033[1m'+ "\t\t* -------> All threads are completed <------- *" + '\033[0;0m')
