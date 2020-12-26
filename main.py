@@ -7,6 +7,7 @@ import os.path
 from bitarray import bitarray
 import sys
 import threading
+#import time
 
 chunk_size=256
 size=1024*10
@@ -17,31 +18,44 @@ class File:
         self.name = name
         self.chunks = fileChunks
         self.length = 0
+        self.inuse = 0
 
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
     
     def write_at(self, at):
+        self.inuse += 1
+        if self.inuse == 1:
+            #time.sleep(2)
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
                 input_ = threadLocal.ioh.input('Enter Data: ', end = '')
-                threadLocal.ioh.output(listToString(input_)  )
+                #threadLocal.ioh.output(listToString(input_)  )
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
                 self.chunks = chunksAndLength[0]
                 self.length = chunksAndLength[1]
             else:
                 threadLocal.ioh.output("Please enter a location inside the file!")
+            self.inuse = 0
+        else:
+            threadLocal.ioh.output("File open in another thread")
                         
     def write(self):
-            input_ = threadLocal.ioh.input('')
-            threadLocal.ioh.output("Enter Data: " + input_  )
+        self.inuse += 1
+        if self.inuse == 1:     
+            #time.sleep(2) 
+            input_ = threadLocal.ioh.input('Enter Data: ')
+            #threadLocal.ioh.output(input_  )
             input_=input_.encode("utf-8")
             
             chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
-            
+            self.inuse = 0
+        else:
+            threadLocal.ioh.output("File open in another thread")
+ 
     def read(self):
         threadLocal.ioh.output(fs.Read_from_File(self.chunks))
 
@@ -54,16 +68,18 @@ class File:
             threadLocal.ioh.output("Error: Trying to read outside of file!")
 
     def move_in(self, fromAddr, toAddr, selectionSize):
-
-        fromAddr = int(fromAddr)
-        toAddr = int(toAddr)
-        selectionSize = int(selectionSize)
-        total_size=len(self.chunks)*chunk_size
-        
-        if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
-            self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
+        if self.inuse == 1:
+            fromAddr = int(fromAddr)
+            toAddr = int(toAddr)
+            selectionSize = int(selectionSize)
+            total_size=len(self.chunks)*chunk_size
+            
+            if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
+                self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
+            else:
+                threadLocal.ioh.output("Out Of File Index!")
         else:
-            threadLocal.ioh.output("Out Of File Index!")
+            threadLocal.ioh.output("File open in another thread")
 
 class Directory:
     def __init__(self, name, parent):
@@ -116,24 +132,31 @@ class Directory:
 
     # Delete file
     def rmfile(self, filename):
+        #time.sleep(1)
         if filename in self.childfiles:
-            self.childfiles[filename].deleteFile()
-            del self.childfiles[filename]
+            if self.childfiles[filename].inuse == 0:
+                self.childfiles[filename].deleteFile()
+                del self.childfiles[filename]
+            else:
+                threadLocal.ioh.output("File open in another thread")
         else:
             threadLocal.ioh.output("No such file found to delete")
 
     # Move file to another folder
     def mvfile(self, filename, path):
-        if filename in self.childfiles:
-            newDir = cd(self, path.split('/'))
-            if newDir == self:
-                threadLocal.ioh.output("Error: Move operation failed!")
+        if self.childfiles[filename].inuse == 0:
+            if filename in self.childfiles:
+                newDir = cd(self, path.split('/'))
+                if newDir == self:
+                    threadLocal.ioh.output("Error: Move operation failed!")
+                    return
+                newDir.childfiles[filename] = self.childfiles[filename]
+                del self.childfiles[filename]
+            else:
+                threadLocal.ioh.output("No such file found to move")
                 return
-            newDir.childfiles[filename] = self.childfiles[filename]
-            del self.childfiles[filename]
         else:
-            threadLocal.ioh.output("No such file found to move")
-            return
+            threadLocal.ioh.output("File open in another thread")
 
     # set mode bits and return File object
     def open_(self, filename):
@@ -149,17 +172,17 @@ class Directory:
             }
 ### Commented this because dont want to print this in terminal while using threads ###
 
-#            threadLocal.ioh.output('''
-#              Choose an operation to perform on the file: 
-#                    read
-#                    write
-#                    write_at [address in file]
-#                    read_at [address in file] [size]
-#                    move [from address] [to address] [size]
-#                ''')
+            threadLocal.ioh.output('''
+              Choose an operation to perform on the file: 
+                    read
+                    write
+                    write_at [address in file]
+                    read_at [address in file] [size]
+                    move [from address] [to address] [size]
+                ''')
             while flag!=1:
-                fileargs=threadLocal.ioh.input('').split()
-                threadLocal.ioh.output("Operation: " + listToString(fileargs))
+                fileargs=threadLocal.ioh.input('Operation: ').split()
+                threadLocal.ioh.output(listToString(fileargs))
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -220,9 +243,9 @@ class Directory:
             threadLocal.ioh.output(self.name)
             prefix = "|  "
         for file in self.childfiles:
-            threadLocal.ioh.output(prefix+"<file>",self.childfiles[file].name, str( [element * 256 for element in self.childfiles[file].chunks ]))
+            threadLocal.ioh.output(prefix + "<file> " + self.childfiles[file].name + " " + str( [element * 256 for element in self.childfiles[file].chunks ]))
         for directory in self.childdir:
-            threadLocal.ioh.output(prefix+"<dir>", self.childdir[directory].name)
+            threadLocal.ioh.output(prefix + "<dir> " + self.childdir[directory].name)
             self.childdir[directory].memorymap(prefix+"|  ")
 
 # Utility function which checks if the directory structure is too big to be stored on the given chunks
@@ -273,8 +296,8 @@ def run(currentDir,file):
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = threadLocal.ioh.input('').split(' ', 5)
-        threadLocal.ioh.output( currentDir.getPath() + ': ' + listToString(args) )
+        args = threadLocal.ioh.input(currentDir.getPath() + ': ').split(' ', 5)
+        #threadLocal.ioh.output( listToString(args) )
         # Do nothing if empty input is entered
         if args == ['']:
             continue
@@ -380,7 +403,7 @@ if __name__ == "__main__":
     if(len(sys.argv)!=2):
         print ('''\033[93m\033[1m 
                  Please enter number of threads! Run the code as
-                 " python  [python file name] [No. of threads] \" \033[0;0m''')
+                 " python  [python file name] [No. of threads] \" \033[0;0m\n''')
         exit(0)
 
     try:
@@ -388,9 +411,9 @@ if __name__ == "__main__":
     except:
         print ('''\033[93m\033[1m 
                 Please enter the correct command! Run the code as
-                " python [python file name] [No. of threads] \" \033[0;0m''')
+                 " python [python file name] [No. of threads] \" \033[0;0m\n''')
         exit(0)
-
+ 
     threads=list()
     for i in range(thr):
         thread=threading.Thread(target=run,args=(currentDir,f"script{i}.txt"))#Creating threads
@@ -398,4 +421,4 @@ if __name__ == "__main__":
         thread.start()
     for thread in threads:
         thread.join()#waiting for threads to finish
-    print("\n"+'\033[92m'+ '\033[1m'+ "\t\t* -------> All threads are completed <------- *" + '\033[0;0m')
+    print("\n"+'\u001b[36m'+ '\033[1m'+ "\t\t*-------> All threads successfully completed <------- *\n" + '\033[0;0m')
