@@ -345,6 +345,20 @@ def listToString(s):
 
 if __name__ == "__main__":
     
+    if(len(sys.argv)!=2):
+        print ('''\033[93m\033[1m 
+                 Please enter number of threads! Run the code as
+                 " python  [python file name] [No. of threads] \" \033[0;0m\n''')
+        exit(0)
+
+    try:
+        thr=int(sys.argv[1])
+    except:
+        print ('''\033[93m\033[1m 
+                Please enter the correct command! Run the code as
+                 " python [python file name] [No. of threads] \" \033[0;0m\n''')
+        exit(0)
+
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
         with open('fs.data', 'r+b') as fileIn:
@@ -377,42 +391,12 @@ if __name__ == "__main__":
         'ls'     : Directory.ls,
         'memmap' : Directory.memorymap
     }
-
-### Commented this because dont want to print this in terminal while using threads ###
-
-#    print('''
-#        ls to display available folders
-#        mkdir [dirname] to create folder
-#       rmdir [dirname] to remove a folder
-#        mkfile [filename] to create a file
-#        rmfile [filename] to remove a file
-#        mvfile [filename] [path] to move file to another folder
-#        cd [dirname] to enter the folder
-#        Also, 'cd ..' returns to previous folder
-#
-#        memmap to view memory map of the filesystem
-#
-#       exit to EXIT
-#        ''')
   
     # Create scripts if they aren't already created
     if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
         scriptCreator()
     #Create a shared lock
     stdinLock=threading.Lock()
-    if(len(sys.argv)!=2):
-        print ('''\033[93m\033[1m 
-                 Please enter number of threads! Run the code as
-                 " python  [python file name] [No. of threads] \" \033[0;0m\n''')
-        exit(0)
-
-    try:
-        thr=int(sys.argv[1])
-    except:
-        print ('''\033[93m\033[1m 
-                Please enter the correct command! Run the code as
-                 " python [python file name] [No. of threads] \" \033[0;0m\n''')
-        exit(0)
  
     threads=list()
     for i in range(thr):
