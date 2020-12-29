@@ -311,13 +311,13 @@ def run(currentDir,file):
         elif args[0] in commandDic:
             try:
                if len(args) == 1:
-                   commandDic[args[0]](currentDir)
+                    commandDic[args[0]](currentDir)
                elif len(args) == 2:
                     commandDic[args[0]](currentDir, args[1])
                elif len(args) == 3:
-                   commandDic[args[0]](currentDir, args[1], args[2])
+                    commandDic[args[0]](currentDir, args[1], args[2])
                elif len(args) == 5:
-                   commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
+                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
                else: threadLocal.ioh.output("Argument Error!")
             except TypeError:
                 threadLocal.ioh.output("Error: Please only enter required arguments.")  
@@ -353,7 +353,7 @@ if __name__ == "__main__":
 
     try:
         thr=int(sys.argv[1])
-    except:
+    except: 
         print ('''\033[93m\033[1m 
                 Please enter the correct command! Run the code as
                  " python [python file name] [No. of threads] \" \033[0;0m\n''')
@@ -366,7 +366,7 @@ if __name__ == "__main__":
             dirAndBitArray= pickle.load(fileIn)
             currentDir = dirAndBitArray[0]
             bitArray = dirAndBitArray[1]
-            
+    
     # Otherwise, create hard drive and root folder with parent set to None
     else:
         with open("fs.data","wb") as out:
