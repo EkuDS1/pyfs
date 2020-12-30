@@ -30,7 +30,7 @@ class File:
             #time.sleep(2)
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = threadLocal.ioh.input('Enter Data: ', end = '')
+                input_ = threadLocal.ioh.input('Enter Data: ')
                 #threadLocal.ioh.output(listToString(input_)  )
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
@@ -173,7 +173,7 @@ class Directory:
                 'write_at'  :  file.write_at,
                 'read_at'   :  file.read_at
             }
-### Commented this because dont want to print this in terminal while using threads ###
+            ### Commented this because dont want to print this in terminal while using threads ###
 
             threadLocal.ioh.output('''
               Choose an operation to perform on the file: 
@@ -211,10 +211,11 @@ class Directory:
                         threadLocal.ioh.output("TypeError:",e.args)
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
                 else:
-                    threadLocal.ioh.output("Invalid Command!")
-                
+                    threadLocal.ioh.output("Invalid Command!")        
         else:
             threadLocal.ioh.output("File Not Found!")
+        # Flush all output from open function
+        threadLocal.ioh.flush()  
         
     # clear mode bits
     def close(self, filename):
@@ -233,16 +234,14 @@ class Directory:
     
     # Displays folders and files, MS DOS(or Windows CMD) style
     def ls(self):
-        outputString=""
         if self.childdir:
             for dirname in self.childdir.keys():
-                outputString+=f'\t<DIR>\t{dirname}\n'
+                threadLocal.ioh.output(f'\t<DIR>\t{dirname}')
         if self.childfiles:
             for filename in self.childfiles.keys():
-                outputString+=f'\t\t{filename}\t\n'
+                threadLocal.ioh.output(f'\t\t{filename}\t')
         if not self.childdir and not self.childfiles:
             threadLocal.ioh.output("Empty Folder")
-        threadLocal.ioh.output(outputString)
         
     def memorymap(self, prefix=""):
         if prefix=="":
@@ -302,7 +301,7 @@ def run(currentDir,conn):
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = threadLocal.ioh.input("").split(' ', 5)
+        args = threadLocal.ioh.input(currentDir.getPath() + ":").split(' ', 5)
         #threadLocal.ioh.output( listToString(args) )
         # Do nothing if empty input is entered
         if args == ['']:
@@ -310,6 +309,9 @@ def run(currentDir,conn):
         # Here, args[0] is the command itself while args[1] onwards should be its string argument
         elif args[0] == 'exit' and len(args) == 1:
             end_program()
+            threadLocal.ioh.flush()
+            threadLocal.ioh.close()
+            break
 
         elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
@@ -329,8 +331,6 @@ def run(currentDir,conn):
                 threadLocal.ioh.output("Error: Please only enter required arguments.")  
         else:
             threadLocal.ioh.output("ERROR: No such command found! " + args[0] )
-
-        threadLocal.ioh.output(currentDir.getPath(),"")
         threadLocal.ioh.flush()
 
 # Stores updated directory data and closes program

@@ -16,10 +16,12 @@ class Server:
         print("Server is ready!")
         print("Waiting for connection")
         
-
     def process(self,conn,run,currDir):
         run(currDir,conn)
+        conn.shutdown(socket.SHUT_RDWR)
         conn.close()
+        print("Connection closed")
+
     def acceptConn(self,run,currDir):
         while True:
             conn,addr=self.sock.accept()#Accept any incoming connection
