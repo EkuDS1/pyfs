@@ -17,23 +17,11 @@ class Server:
         print("Waiting for connection")
         
 
-    def process(self,conn):
-        while True:
-            data=conn.recv(1024)#Recieves max 1024 bytes packet from client  
-            if not data:
-                break
-            print(data)
-            #modifies data
-            data=data.decode('utf-8')+"123"
-            data=data.encode('utf-8')
-            conn.sendall(data)
-            
+    def process(self,conn,run,currDir):
+        run(currDir,conn)
         conn.close()
-    def acceptConn(self):
+    def acceptConn(self,run,currDir):
         while True:
             conn,addr=self.sock.accept()#Accept any incoming connection
             print("New connection accepted: ",conn,addr)
-            start_new_thread(self.process,(conn,))#Create new thread with process and connection object
-if __name__=="__main__":
-    s=Server()
-    s.acceptConn() 
+            start_new_thread(self.process,(conn,run,currDir))#Create new thread with process and connection object

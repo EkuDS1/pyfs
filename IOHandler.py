@@ -1,18 +1,18 @@
 class IOHandler:
-    def __init__(self, inputfile, outputfile):
-        self.istream = open(inputfile,'r')
-        self.ostream = open(outputfile,"w")
-        
+    def __init__(self, conn):
+        self.conn=conn
+        self.outstr=""
+
     def input(self, prompt):
         # Print prompt to out stream
-        print(prompt, file=self.ostream)
-
+        self.outstr+=prompt
         # Return next line in input stream
-        return self.istream.readline().rstrip("\n")
+        return self.conn.recv(1024).decode('utf-8')
 
-    def output(self,output_string):
-        print(output_string,file = self.ostream)
+    def output(self,output_string,endChar='\n'):
+        self.outstr+=output_string+endChar
+    
+    def flush(self):
+        self.conn.sendall(self.outstr.encode('utf-8'))
+        self.outstr=""
 
-    def __del__(self):
-        self.istream.close()
-        self.ostream.close()
