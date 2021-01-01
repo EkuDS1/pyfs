@@ -195,7 +195,7 @@ class Directory:
                 elif fileargs[0] in fileDic:
                     try:
                         if len(fileargs) == 1:
-                            fileDic[fileargs[0]]()
+                                fileDic[fileargs[0]]()
                         elif len(fileargs) == 2:
                             if fileargs[0] == 'write_at':
                                 fileDic[fileargs[0]](fileargs[1])
@@ -208,7 +208,7 @@ class Directory:
                         else:
                             threadLocal.ioh.output("Error: Please enter correct arguments.")
                     except TypeError as e:
-                        threadLocal.ioh.output("TypeError:",e.args)
+                        threadLocal.ioh.output("TypeError:" + e.args)
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
                 else:
                     threadLocal.ioh.output("Invalid Command!")        
@@ -289,15 +289,49 @@ def cd(currentDirInput, pathArr):
     
     return tempDir
 
+def sign_process():
+    option = threadLocal.ioh.input("Do you have a account [ y | n ]: ")
+    if option.lower() == "n":
+        threadLocal.ioh.output("---- SIGN UP ----")
+        while True:
+            user_name = threadLocal.ioh.input("Enter the user name: ")
+            if user_name in user_data:
+                threadLocal.ioh.output("User already exists")
+            else:
+                user_password = threadLocal.ioh.input("Enter password: ")
+                user_data[user_name] = user_password
+                # storing the user logged in
+                threadLocal.active_user = user_name
+                threadLocal.ioh.output("User Created.\n")
+                break
+    elif option.lower() == "y":
+        threadLocal.ioh.output("---- SIGN IN ----")
+        while True:
+            user_name = threadLocal.ioh.input("Enter user name: ")
+            user_password = threadLocal.ioh.input("Enter password: ")
+            if user_name in user_data and user_password == user_data[user_name]:
+                threadLocal.ioh.output(user_name+" User logged in\n")
+                # storing the user logged in
+                threadLocal.active_user = user_name
+                break
+            else:
+                threadLocal.ioh.output("\033[0;31mWrong user name or password\033[0;0m")
+    else:
+        sign_process()
+
 def run(currentDir,conn):
     #Stdin should not be accessed by multiple threads
     #as it will cause file inputs to mix and cause crashes
     #so stdin will be locked by each thread when its used. 
 
     ioh = getattr(threadLocal, 'ioh', None)
+    #it stores the user 
+    active_user = getattr(threadLocal, 'active_user', None)
     if ioh is None:
         threadLocal.ioh = IOHandler(conn)
     
+    sign_process()
+
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
@@ -340,7 +374,7 @@ def end_program():
     
     # store directory data as a binary file
     with open('fs.data', 'r+b') as fileOut:
-        pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
+        pickle.dump((currentDir,fs.getBitArray(),user_data), fileOut,pickle.HIGHEST_PROTOCOL)
         
     threadLocal.ioh.output("\n************ Program Closed ************")
     
@@ -375,6 +409,7 @@ if __name__ == "__main__":
             dirAndBitArray= pickle.load(fileIn)
             currentDir = dirAndBitArray[0]
             bitArray = dirAndBitArray[1]
+            user_data = dirAndBitArray[2]
     
     # Otherwise, create hard drive and root folder with parent set to None
     else:
@@ -384,6 +419,7 @@ if __name__ == "__main__":
             bitArray.setall(0)
             bitArray[0:dirChunks]=True
             currentDir = Directory('root', None)
+            user_data = {}
     fs = FileSystem(open('fs.data', 'r+b'))
     fs.setBitArray(bitArray)
     
@@ -413,4 +449,4 @@ if __name__ == "__main__":
     #     thread.join()#waiting for threads to finish
     s=Server()
     s.acceptConn(run,currentDir)
-    print("\n"+'\u001b[36m'+ '\033[1m'+ "\t\t*-------> All threads successfully completed <------- *\n" + '\033[0;0m')
+    #print('\n\u001b[36m\033[1m\t\t*-------> All threads successfully completed <------- *\n\033[0;0m')
