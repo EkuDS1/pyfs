@@ -4,6 +4,7 @@ class Client:
     def __init__(self, hostIP):
         self.host=hostIP
         self.port=95
+
         self.client=socket.socket(socket.AF_INET,socket.SOCK_STREAM)    
         self.client.connect((self.host,self.port))
     
@@ -35,6 +36,10 @@ class Client:
 
 if __name__=="__main__":
     hostIP = input("What ip do you wish to connect to?: ")
-    c=Client(hostIP)
-    c.program()
+    
+    try:
+        c=Client(hostIP)
+        c.program()
+    except socket.error:
+            print("\n--------Error! Server is not available!--------")
 
