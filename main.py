@@ -1,5 +1,5 @@
 # pickle is used to store objects
-from scriptCreator import scriptCreator
+
 from FileSystem import FileSystem, threadLocal
 from IOHandler import IOHandler
 import pickle
@@ -7,6 +7,7 @@ import os.path
 from bitarray import bitarray
 import sys
 import threading
+from server import Server
 #import time
 
 chunk_size=256
@@ -29,7 +30,7 @@ class File:
             #time.sleep(2)
             at=int(at)
             if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = threadLocal.ioh.input('Enter Data: ', end = '')
+                input_ = threadLocal.ioh.input('Enter Data: ')
                 #threadLocal.ioh.output(listToString(input_)  )
                 input_=input_.encode("utf-8")
                 chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
@@ -42,6 +43,7 @@ class File:
             threadLocal.ioh.output("File open in another thread")
                         
     def write(self):
+        threadLocal.ioh.output("Write:")
         self.inuse += 1
         if self.inuse == 1:     
             #time.sleep(2) 
@@ -53,6 +55,7 @@ class File:
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
             self.inuse = 0
+            threadLocal.ioh.output("Write completed!")
         else:
             threadLocal.ioh.output("File open in another thread")
  
@@ -95,6 +98,7 @@ class Directory:
         else:
             self.childdir[dirname] = Directory(dirname, self)
             
+            
             if dirTooBig():
                 threadLocal.ioh.output("Error! Directory table too large. Cannot create directory.")
                 self.rmdir(dirname)
@@ -121,7 +125,6 @@ class Directory:
                 threadLocal.ioh.output("Error! No more space on disk. Please delete a file.")
                 return
             self.childfiles[filename] = File(filename, fileChunks)
-            
             # Compress and serialize entire directory tree and check if it's too big to fit in the given chunks
             bytesToStore = pickle.dumps((root, fs.getBitArray()),pickle.HIGHEST_PROTOCOL)
 
@@ -170,7 +173,7 @@ class Directory:
                 'write_at'  :  file.write_at,
                 'read_at'   :  file.read_at
             }
-### Commented this because dont want to print this in terminal while using threads ###
+            ### Commented this because dont want to print this in terminal while using threads ###
 
             threadLocal.ioh.output('''
               Choose an operation to perform on the file: 
@@ -182,7 +185,7 @@ class Directory:
                 ''')
             while flag!=1:
                 fileargs=threadLocal.ioh.input('Operation: ').split()
-                threadLocal.ioh.output(listToString(fileargs))
+                #threadLocal.ioh.output(listToString(fileargs))
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -192,7 +195,7 @@ class Directory:
                 elif fileargs[0] in fileDic:
                     try:
                         if len(fileargs) == 1:
-                            fileDic[fileargs[0]]()
+                                fileDic[fileargs[0]]()
                         elif len(fileargs) == 2:
                             if fileargs[0] == 'write_at':
                                 fileDic[fileargs[0]](fileargs[1])
@@ -205,12 +208,14 @@ class Directory:
                         else:
                             threadLocal.ioh.output("Error: Please enter correct arguments.")
                     except TypeError as e:
-                        threadLocal.ioh.output("TypeError:",e.args)
+                        threadLocal.ioh.output("TypeError:" + e.args)
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
                 else:
-                    threadLocal.ioh.output("Invalid Command!")
+                    threadLocal.ioh.output("Invalid Command!")        
         else:
             threadLocal.ioh.output("File Not Found!")
+        # Flush all output from open function
+        threadLocal.ioh.flush()  
         
     # clear mode bits
     def close(self, filename):
@@ -237,7 +242,7 @@ class Directory:
                 threadLocal.ioh.output(f'\t\t{filename}\t')
         if not self.childdir and not self.childfiles:
             threadLocal.ioh.output("Empty Folder")
-    
+        
     def memorymap(self, prefix=""):
         if prefix=="":
             threadLocal.ioh.output(self.name)
@@ -284,19 +289,53 @@ def cd(currentDirInput, pathArr):
     
     return tempDir
 
-def run(currentDir,file):
+def sign_process():
+    option = threadLocal.ioh.input("Do you have a account [ y | n ]: ")
+    if option.lower() == "n":
+        threadLocal.ioh.output("---- SIGN UP ----")
+        while True:
+            user_name = threadLocal.ioh.input("Enter the user name: ")
+            if user_name in user_data:
+                threadLocal.ioh.output("User already exists")
+            else:
+                user_password = threadLocal.ioh.input("Enter password: ")
+                user_data[user_name] = user_password
+                # storing the user logged in
+                threadLocal.active_user = user_name
+                threadLocal.ioh.output("User Created.\n")
+                break
+    elif option.lower() == "y":
+        threadLocal.ioh.output("---- SIGN IN ----")
+        while True:
+            user_name = threadLocal.ioh.input("Enter user name: ")
+            user_password = threadLocal.ioh.input("Enter password: ")
+            if user_name in user_data and user_password == user_data[user_name]:
+                threadLocal.ioh.output(user_name+" User logged in\n")
+                # storing the user logged in
+                threadLocal.active_user = user_name
+                break
+            else:
+                threadLocal.ioh.output("\033[0;31mWrong user name or password\033[0;0m")
+    else:
+        sign_process()
+
+def run(currentDir,conn):
     #Stdin should not be accessed by multiple threads
     #as it will cause file inputs to mix and cause crashes
     #so stdin will be locked by each thread when its used. 
 
     ioh = getattr(threadLocal, 'ioh', None)
+    #it stores the user 
+    active_user = getattr(threadLocal, 'active_user', None)
     if ioh is None:
-        threadLocal.ioh = IOHandler("stdin-scripts/"+file, "stdout-scripts/"+file)
+        threadLocal.ioh = IOHandler(conn)
     
+    sign_process()
+
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
-        args = threadLocal.ioh.input(currentDir.getPath() + ': ').split(' ', 5)
+        args = threadLocal.ioh.input(currentDir.getPath() + ":").split(' ', 5)
         #threadLocal.ioh.output( listToString(args) )
         # Do nothing if empty input is entered
         if args == ['']:
@@ -304,26 +343,30 @@ def run(currentDir,file):
         # Here, args[0] is the command itself while args[1] onwards should be its string argument
         elif args[0] == 'exit' and len(args) == 1:
             end_program()
+            threadLocal.ioh.flush()
+            threadLocal.ioh.close()
             break
+
         elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
-
+            
         elif args[0] in commandDic:
             try:
                if len(args) == 1:
-                   commandDic[args[0]](currentDir)
+                    commandDic[args[0]](currentDir)
                elif len(args) == 2:
                     commandDic[args[0]](currentDir, args[1])
                elif len(args) == 3:
-                   commandDic[args[0]](currentDir, args[1], args[2])
+                    commandDic[args[0]](currentDir, args[1], args[2])
                elif len(args) == 5:
-                   commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
+                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
                else: threadLocal.ioh.output("Argument Error!")
             except TypeError:
                 threadLocal.ioh.output("Error: Please only enter required arguments.")  
         else:
             threadLocal.ioh.output("ERROR: No such command found! " + args[0] )
-        
+        threadLocal.ioh.flush()
+
 # Stores updated directory data and closes program
 def end_program():
     # go to root
@@ -331,7 +374,7 @@ def end_program():
     
     # store directory data as a binary file
     with open('fs.data', 'r+b') as fileOut:
-        pickle.dump((currentDir,fs.getBitArray()), fileOut,pickle.HIGHEST_PROTOCOL)
+        pickle.dump((currentDir,fs.getBitArray(),user_data), fileOut,pickle.HIGHEST_PROTOCOL)
         
     threadLocal.ioh.output("\n************ Program Closed ************")
     
@@ -345,19 +388,19 @@ def listToString(s):
 
 if __name__ == "__main__":
     
-    if(len(sys.argv)!=2):
-        print ('''\033[93m\033[1m 
-                 Please enter number of threads! Run the code as
-                 " python  [python file name] [No. of threads] \" \033[0;0m\n''')
-        exit(0)
+    # if(len(sys.argv)!=2):
+    #     print ('''\033[93m\033[1m 
+    #              Please enter number of threads! Run the code as
+    #              " python  [python file name] [No. of threads] \" \033[0;0m\n''')
+    #     exit(0)
 
-    try:
-        thr=int(sys.argv[1])
-    except:
-        print ('''\033[93m\033[1m 
-                Please enter the correct command! Run the code as
-                 " python [python file name] [No. of threads] \" \033[0;0m\n''')
-        exit(0)
+    # try:
+    #     thr=int(sys.argv[1])
+    # except: 
+    #     print ('''\033[93m\033[1m 
+    #             Please enter the correct command! Run the code as
+    #              " python [python file name] [No. of threads] \" \033[0;0m\n''')
+    #     exit(0)
 
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
@@ -366,7 +409,8 @@ if __name__ == "__main__":
             dirAndBitArray= pickle.load(fileIn)
             currentDir = dirAndBitArray[0]
             bitArray = dirAndBitArray[1]
-            
+            user_data = dirAndBitArray[2]
+    
     # Otherwise, create hard drive and root folder with parent set to None
     else:
         with open("fs.data","wb") as out:
@@ -375,6 +419,7 @@ if __name__ == "__main__":
             bitArray.setall(0)
             bitArray[0:dirChunks]=True
             currentDir = Directory('root', None)
+            user_data = {}
     fs = FileSystem(open('fs.data', 'r+b'))
     fs.setBitArray(bitArray)
     
@@ -393,16 +438,15 @@ if __name__ == "__main__":
     }
   
     # Create scripts if they aren't already created
-    if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
-        scriptCreator()
-    #Create a shared lock
-    stdinLock=threading.Lock()
- 
-    threads=list()
-    for i in range(thr):
-        thread=threading.Thread(target=run,args=(currentDir,f"script{i}.txt"))#Creating threads
-        threads.append(thread)
-        thread.start()
-    for thread in threads:
-        thread.join()#waiting for threads to finish
-    print("\n"+'\u001b[36m'+ '\033[1m'+ "\t\t*-------> All threads successfully completed <------- *\n" + '\033[0;0m')
+    # if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
+    #     scriptCreator()
+    # threads=list()
+    # for i in range(thr):
+    #     thread=threading.Thread(target=run,args=(currentDir,f"script{i}.txt"))#Creating threads
+    #     threads.append(thread)
+    #     thread.start()
+    # for thread in threads:
+    #     thread.join()#waiting for threads to finish
+    s=Server()
+    s.acceptConn(run,currentDir)
+    #print('\n\u001b[36m\033[1m\t\t*-------> All threads successfully completed <------- *\n\033[0;0m')

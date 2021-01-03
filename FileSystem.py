@@ -204,12 +204,12 @@ class FileSystem:
 
     def Read_from_File(self, chunks):
         outputString=""
-        threadLocal.ioh.output(str(chunks))
+        #threadLocal.ioh.output(str(chunks))
         #Go into their chunks and read complete chunks, strip the empty bytes.
         for chunk in chunks:
             self.virtualHardDisk.seek(chunk*chunk_size)
             outputString+=self.virtualHardDisk.read(chunk_size).decode("utf-8").rstrip("\x00")
-        threadLocal.ioh.output("Length: {}".format(len(outputString)))
+        #threadLocal.ioh.output("Length: {}".format(len(outputString)))
         return outputString
 
     def read_at(self,chunks,at, readSize):
