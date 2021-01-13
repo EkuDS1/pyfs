@@ -8,7 +8,7 @@ from bitarray import bitarray
 import sys
 import threading
 from server import Server
-#import time
+mutex = threading.Lock()
 
 chunk_size=256
 size=1024*10
@@ -25,64 +25,59 @@ class File:
         fs.deallocateFile(self.chunks)
     
     def write_at(self, at):
-        self.inuse += 1
-        if self.inuse == 1:
-            #time.sleep(2)
-            at=int(at)
-            if at>=0 and at<len(self.chunks)*chunk_size:
-                input_ = threadLocal.ioh.input('Enter Data: ')
-                #threadLocal.ioh.output(listToString(input_)  )
-                input_=input_.encode("utf-8")
-                chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
-                self.chunks = chunksAndLength[0]
-                self.length = chunksAndLength[1]
-            else:
-                threadLocal.ioh.output("Please enter a location inside the file!")
-            self.inuse = 0
-        else:
-            threadLocal.ioh.output("File open in another thread")
-                        
-    def write(self):
-        threadLocal.ioh.output("Write:")
-        self.inuse += 1
-        if self.inuse == 1:     
-            #time.sleep(2) 
+        at=int(at)
+        if at>=0 and at<len(self.chunks)*chunk_size:
             input_ = threadLocal.ioh.input('Enter Data: ')
-            #threadLocal.ioh.output(input_  )
+            #threadLocal.ioh.output(listToString(input_)  )
             input_=input_.encode("utf-8")
-            
-            chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
+            mutex.acquire()
+            chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
-            self.inuse = 0
-            threadLocal.ioh.output("Write completed!")
+            mutex.release()
         else:
-            threadLocal.ioh.output("File open in another thread")
+            threadLocal.ioh.output("Please enter a location inside the file!")
+                        
+    def write(self):
+        threadLocal.ioh.output("Write:")  
+        input_ = threadLocal.ioh.input('Enter Data: ')
+        #threadLocal.ioh.output(input_  )   
+        input_=input_.encode("utf-8")
+        
+        mutex.acquire()
+        chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
+        self.chunks = chunksAndLength[0]
+        self.length = chunksAndLength[1]
+        mutex.release()
+        threadLocal.ioh.output("Write completed!")
  
     def read(self):
+        ### TODO:
+        #### adding semaphore
         threadLocal.ioh.output(fs.Read_from_File(self.chunks))
-
+        
     def read_at(self, at, readSize):
         at = int(at)
         readSize = int(readSize)
         if (at + readSize) <= self.length and at >=0 and readSize >=0:
+            # TODO:
+            ##### adding semophore
             threadLocal.ioh.output(fs.read_at(self.chunks,at, readSize))
         else:
             threadLocal.ioh.output("Error: Trying to read outside of file!")
 
     def move_in(self, fromAddr, toAddr, selectionSize):
-        if self.inuse == 1:
-            fromAddr = int(fromAddr)
-            toAddr = int(toAddr)
-            selectionSize = int(selectionSize)
-            total_size=len(self.chunks)*chunk_size
-            
-            if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
-                self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
-            else:
-                threadLocal.ioh.output("Out Of File Index!")
+        fromAddr = int(fromAddr)
+        toAddr = int(toAddr)
+        selectionSize = int(selectionSize)
+        total_size=len(self.chunks)*chunk_size
+        
+        if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
+            mutex.acquire()
+            self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
+            mutex.release()
         else:
-            threadLocal.ioh.output("File open in another thread")
+            threadLocal.ioh.output("Out Of File Index!")
 
 class Directory:
     def __init__(self, name, parent):
@@ -96,9 +91,7 @@ class Directory:
         if dirname in self.childdir:
             threadLocal.ioh.output("Folder already exists!")
         else:
-            self.childdir[dirname] = Directory(dirname, self)
-            
-            
+            self.childdir[dirname] = Directory(dirname, self)       
             if dirTooBig():
                 threadLocal.ioh.output("Error! Directory table too large. Cannot create directory.")
                 self.rmdir(dirname)
@@ -135,7 +128,6 @@ class Directory:
 
     # Delete file
     def rmfile(self, filename):
-        #time.sleep(1)
         if filename in self.childfiles:
             if self.childfiles[filename].inuse == 0:
                 self.childfiles[filename].deleteFile()
@@ -166,6 +158,7 @@ class Directory:
         flag=0
         if filename in self.childfiles:
             file=self.childfiles[filename]
+            self.childfiles[filename].inuse += 1
             fileDic={
                 'read'      :  file.read,
                 'write'     :  file.write,
@@ -208,7 +201,7 @@ class Directory:
                         else:
                             threadLocal.ioh.output("Error: Please enter correct arguments.")
                     except TypeError as e:
-                        threadLocal.ioh.output("TypeError:" + e.args)
+                        threadLocal.ioh.output("TypeError:" + str(e.args))
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
                 else:
                     threadLocal.ioh.output("Invalid Command!")        
@@ -219,6 +212,7 @@ class Directory:
         
     # clear mode bits
     def close(self, filename):
+        self.childfiles[filename].inuse -= 1
         return 1
 
     # Recursively constructs the path of the folder we are in using a string
@@ -302,7 +296,7 @@ def sign_process():
                 user_data[user_name] = user_password
                 # storing the user logged in
                 threadLocal.active_user = user_name
-                threadLocal.ioh.output("User Created.\n")
+                threadLocal.ioh.output("User Created\nUser Logged in\n")
                 break
     elif option.lower() == "y":
         threadLocal.ioh.output("---- SIGN IN ----")
@@ -316,6 +310,10 @@ def sign_process():
                 break
             else:
                 threadLocal.ioh.output("\033[0;31mWrong user name or password\033[0;0m")
+                option2 = threadLocal.ioh.input("Press r to Retry or b to go back:")
+                if option2.lower() == "b":
+                    sign_process()
+                    break
     else:
         sign_process()
 
@@ -331,6 +329,10 @@ def run(currentDir,conn):
         threadLocal.ioh = IOHandler(conn)
     
     sign_process()
+    threadLocal.ioh.output("\033\t[1mCOMMANDS:\033[0m\n\t\tmkdir [dirname] --> Create Directory\n\t\trmdir [dirname] --> Delete Directory\n" +
+                           "\t\tmkfile [filename] --> Create File\n\t\trmfile [filename] --> Delete File\n" +
+                           "\t\topen [filename] --> open file\n\t\tmemmap --> view directory Structure\n" +
+                           "\t\tmvfile [filename] [path] --> To move file\n\t\tls --> Shows currect Directory Structure\n")
 
     while True:
         # Prints the current path and gets input
