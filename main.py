@@ -8,7 +8,10 @@ from bitarray import bitarray
 import sys
 import threading
 from server import Server
-mutex = threading.Lock()
+import time
+
+wrt_mutex = threading.Lock()
+rdcounter_mutex = threading.Lock()
 
 chunk_size=256
 size=1024*10
@@ -20,6 +23,7 @@ class File:
         self.chunks = fileChunks
         self.length = 0
         self.inuse = 0
+        self.readThreadCount = 0
 
     def deleteFile(self):
         fs.deallocateFile(self.chunks)
@@ -30,39 +34,38 @@ class File:
             input_ = threadLocal.ioh.input('Enter Data: ')
             #threadLocal.ioh.output(listToString(input_)  )
             input_=input_.encode("utf-8")
-            mutex.acquire()
+            wrt_mutex.acquire()
             chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
-            mutex.release()
+            wrt_mutex.release()
         else:
             threadLocal.ioh.output("Please enter a location inside the file!")
                         
     def write(self):
         threadLocal.ioh.output("Write:")  
-        input_ = threadLocal.ioh.input('Enter Data: ')
-        #threadLocal.ioh.output(input_  )   
+        input_ = threadLocal.ioh.input('Enter Data: ')  
         input_=input_.encode("utf-8")
         
-        mutex.acquire()
+        wrt_mutex.acquire()
         chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
         self.chunks = chunksAndLength[0]
         self.length = chunksAndLength[1]
-        mutex.release()
+        wrt_mutex.release()
         threadLocal.ioh.output("Write completed!")
  
     def read(self):
-        ### TODO:
-        #### adding semaphore
+        self.rd_acquire()
         threadLocal.ioh.output(fs.Read_from_File(self.chunks))
-        
+        self.rd_release()
+
     def read_at(self, at, readSize):
         at = int(at)
         readSize = int(readSize)
         if (at + readSize) <= self.length and at >=0 and readSize >=0:
-            # TODO:
-            ##### adding semophore
+            self.rd_acquire()
             threadLocal.ioh.output(fs.read_at(self.chunks,at, readSize))
+            self.rd_release()
         else:
             threadLocal.ioh.output("Error: Trying to read outside of file!")
 
@@ -73,11 +76,29 @@ class File:
         total_size=len(self.chunks)*chunk_size
         
         if fromAddr >= 0 and fromAddr < total_size and toAddr >= 0 and toAddr < total_size and selectionSize < total_size and selectionSize >= 0:
-            mutex.acquire()
+            wrt_mutex.acquire()
             self.length = fs.move_within_file(fromAddr,toAddr,selectionSize,self.chunks,self.length)
-            mutex.release()
+            wrt_mutex.release()
         else:
             threadLocal.ioh.output("Out Of File Index!")
+
+    def rd_acquire(self):
+        rdcounter_mutex.acquire()
+
+        self.readThreadCount += 1
+        if self.readThreadCount == 1:
+            wrt_mutex.acquire()
+        
+        rdcounter_mutex.release()
+
+    def rd_release(self):
+        rdcounter_mutex.acquire()
+
+        self.readThreadCount -= 1
+        if self.readThreadCount == 0:
+            wrt_mutex.release()
+
+        rdcounter_mutex.release()
 
 class Directory:
     def __init__(self, name, parent):
