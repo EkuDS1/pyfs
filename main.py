@@ -1,5 +1,3 @@
-# pickle is used to store objects
-
 from FileSystem import FileSystem, threadLocal
 from IOHandler import IOHandler
 import pickle
@@ -8,7 +6,6 @@ from bitarray import bitarray
 import sys
 import threading
 from server import Server
-import time
 
 wrt_mutex = threading.Lock()
 rdcounter_mutex = threading.Lock()
@@ -32,13 +29,14 @@ class File:
         at=int(at)
         if at>=0 and at<len(self.chunks)*chunk_size:
             input_ = threadLocal.ioh.input('Enter Data: ')
-            #threadLocal.ioh.output(listToString(input_)  )
             input_=input_.encode("utf-8")
+
             wrt_mutex.acquire()
             chunksAndLength=fs.write_at(self.chunks,self.length,input_,at)
+            wrt_mutex.release()
+
             self.chunks = chunksAndLength[0]
             self.length = chunksAndLength[1]
-            wrt_mutex.release()
         else:
             threadLocal.ioh.output("Please enter a location inside the file!")
                         
@@ -49,9 +47,11 @@ class File:
         
         wrt_mutex.acquire()
         chunksAndLength = fs.Write_to_File(self.chunks, self.length, input_)
+        wrt_mutex.release()
+
         self.chunks = chunksAndLength[0]
         self.length = chunksAndLength[1]
-        wrt_mutex.release()
+        
         threadLocal.ioh.output("Write completed!")
  
     def read(self):
@@ -82,6 +82,7 @@ class File:
         else:
             threadLocal.ioh.output("Out Of File Index!")
 
+    # Increments semaphore for reader threads, also acquires write mutex for first reader
     def rd_acquire(self):
         rdcounter_mutex.acquire()
 
@@ -90,7 +91,7 @@ class File:
             wrt_mutex.acquire()
         
         rdcounter_mutex.release()
-
+    # Decrements semaphore for reader threads, also releases write mutex for last reader
     def rd_release(self):
         rdcounter_mutex.acquire()
 
@@ -177,9 +178,15 @@ class Directory:
     # set mode bits and return File object
     def open_(self, filename):
         flag=0
-        if filename in self.childfiles:
+        
+        if filename not in self.childfiles:
+            threadLocal.ioh.output("File Not Found!")
+        
+        else:
             file=self.childfiles[filename]
+            
             self.childfiles[filename].inuse += 1
+            
             fileDic={
                 'read'      :  file.read,
                 'write'     :  file.write,
@@ -187,7 +194,6 @@ class Directory:
                 'write_at'  :  file.write_at,
                 'read_at'   :  file.read_at
             }
-            ### Commented this because dont want to print this in terminal while using threads ###
 
             threadLocal.ioh.output('''
               Choose an operation to perform on the file: 
@@ -197,9 +203,9 @@ class Directory:
                     read_at [address in file] [size]
                     move [from address] [to address] [size]
                 ''')
+
             while flag!=1:
                 fileargs=threadLocal.ioh.input('Operation: ').split()
-                #threadLocal.ioh.output(listToString(fileargs))
 
                 # Do nothing if empty input is entered
                 if fileargs == []:
@@ -208,26 +214,15 @@ class Directory:
                     flag=self.close(filename)
                 elif fileargs[0] in fileDic:
                     try:
-                        if len(fileargs) == 1:
-                                fileDic[fileargs[0]]()
-                        elif len(fileargs) == 2:
-                            if fileargs[0] == 'write_at':
-                                fileDic[fileargs[0]](fileargs[1])
-                            else:
-                                fileDic[fileargs[0]](fileargs[1])
-                        elif len(fileargs) == 3:
-                            fileDic[fileargs[0]](fileargs[1], fileargs[2])
-                        elif len(fileargs) == 4:
-                            fileDic[fileargs[0]](fileargs[1], fileargs[2], fileargs[3])
+                        if len(fileargs) > 1:
+                            fileDic[fileargs[0]](*fileargs[1:])
                         else:
-                            threadLocal.ioh.output("Error: Please enter correct arguments.")
+                            fileDic[fileargs[0]]()
                     except TypeError as e:
                         threadLocal.ioh.output("TypeError:" + str(e.args))
                         threadLocal.ioh.output("Error: Please enter correct arguments.")
                 else:
                     threadLocal.ioh.output("Invalid Command!")        
-        else:
-            threadLocal.ioh.output("File Not Found!")
         # Flush all output from open function
         threadLocal.ioh.flush()  
         
@@ -350,40 +345,33 @@ def run(currentDir,conn):
         threadLocal.ioh = IOHandler(conn)
     
     sign_process()
-    threadLocal.ioh.output("\033\t[1mCOMMANDS:\033[0m\n\t\tmkdir [dirname] --> Create Directory\n\t\trmdir [dirname] --> Delete Directory\n" +
-                           "\t\tmkfile [filename] --> Create File\n\t\trmfile [filename] --> Delete File\n" +
-                           "\t\topen [filename] --> open file\n\t\tmemmap --> view directory Structure\n" +
-                           "\t\tmvfile [filename] [path] --> To move file\n\t\tls --> Shows currect Directory Structure\n")
+    printHelp()
 
     while True:
         # Prints the current path and gets input
         # To get arguments to the commands, we split the input into a maximum of 5 parts
         args = threadLocal.ioh.input(currentDir.getPath() + ":").split(' ', 5)
-        #threadLocal.ioh.output( listToString(args) )
+
         # Do nothing if empty input is entered
         if args == ['']:
             continue
         # Here, args[0] is the command itself while args[1] onwards should be its string argument
         elif args[0] == 'exit' and len(args) == 1:
             end_program()
-            threadLocal.ioh.flush()
-            threadLocal.ioh.close()
             break
 
         elif args[0] == 'cd' and len(args) == 2:
             currentDir = cd(currentDir, args[1].split('/'))
-            
+
+        elif args[0] == 'help':
+            printHelp()
+
         elif args[0] in commandDic:
             try:
-               if len(args) == 1:
+                if len(args) > 1:
+                    commandDic[args[0]](currentDir, *args[1:])
+                else:
                     commandDic[args[0]](currentDir)
-               elif len(args) == 2:
-                    commandDic[args[0]](currentDir, args[1])
-               elif len(args) == 3:
-                    commandDic[args[0]](currentDir, args[1], args[2])
-               elif len(args) == 5:
-                    commandDic[args[0]](currentDir, args[1], args[2], args[3], args[4])
-               else: threadLocal.ioh.output("Argument Error!")
             except TypeError:
                 threadLocal.ioh.output("Error: Please only enter required arguments.")  
         else:
@@ -400,30 +388,19 @@ def end_program():
         pickle.dump((currentDir,fs.getBitArray(),user_data), fileOut,pickle.HIGHEST_PROTOCOL)
         
     threadLocal.ioh.output("\n************ Program Closed ************")
-    
-def listToString(s):  
-    str1 = ""  
-    for ele in s:  
-        str1 += ele + " "   
-    return str1  
+    threadLocal.ioh.flush()
+    threadLocal.ioh.close()
+
+def printHelp():
+    threadLocal.ioh.output("\033\t[COMMANDS:\033[0m\n\t\tmkdir [dirname] --> Create Directory\n\t\trmdir [dirname] --> Delete Directory\n" +
+                           "\t\tmkfile [filename] --> Create File\n\t\trmfile [filename] --> Delete File\n" +
+                           "\t\topen [filename] --> open file\n\t\tmemmap --> view directory Structure\n" +
+                           "\t\tmvfile [filename] [path] --> To move file\n\t\tls --> Shows currect Directory Structure\n" +
+                           "\t\tcd [path] --> To change directory to [path]\n\t\thelp --> Prints available commands\n")
     
 ################################## Main Code starts from here ##################################
 
 if __name__ == "__main__":
-    
-    # if(len(sys.argv)!=2):
-    #     print ('''\033[93m\033[1m 
-    #              Please enter number of threads! Run the code as
-    #              " python  [python file name] [No. of threads] \" \033[0;0m\n''')
-    #     exit(0)
-
-    # try:
-    #     thr=int(sys.argv[1])
-    # except: 
-    #     print ('''\033[93m\033[1m 
-    #             Please enter the correct command! Run the code as
-    #              " python [python file name] [No. of threads] \" \033[0;0m\n''')
-    #     exit(0)
 
     # If hard drive exists, load it as a stream and load the directory data
     if os.path.isfile('fs.data'):
@@ -457,19 +434,9 @@ if __name__ == "__main__":
         'mvfile' : Directory.mvfile,
         'open'   : Directory.open_,
         'ls'     : Directory.ls,
-        'memmap' : Directory.memorymap
+        'memmap' : Directory.memorymap,
     }
   
-    # Create scripts if they aren't already created
-    # if not os.path.isdir("stdin-scripts") or not os.path.isdir("stdout-scripts"):
-    #     scriptCreator()
-    # threads=list()
-    # for i in range(thr):
-    #     thread=threading.Thread(target=run,args=(currentDir,f"script{i}.txt"))#Creating threads
-    #     threads.append(thread)
-    #     thread.start()
-    # for thread in threads:
-    #     thread.join()#waiting for threads to finish
+    # Start Server
     s=Server()
     s.acceptConn(run,currentDir)
-    #print('\n\u001b[36m\033[1m\t\t*-------> All threads successfully completed <------- *\n\033[0;0m')
