@@ -1,7 +1,5 @@
 import socket
-import threading
 from _thread import *
-import time
 
 class Server:
     def __init__(self):

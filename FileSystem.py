@@ -1,7 +1,4 @@
-# pickle is used to store objects
-import pickle
 import math
-import os.path
 import sys
 from bitarray import bitarray
 import threading
