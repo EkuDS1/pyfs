@@ -1,13 +1,41 @@
 # pyfs - A Python File System / File Server
 
- A filesystem written in Python which can be logged into and used by multiple users. CRUD operations are implemented and text files can be manipulated in a multi-threaded environment. Users log in using their credentials. There is one "virtual hard disk" on which all users' files are stored. Usage given below.
+ A filesystem written in Python which can be logged into and used by multiple users. CRUD operations are implemented and text files can be manipulated in a multi-threaded environment. Users log in using their credentials. There is one "virtual hard disk" on which all users' files and folders are stored. Usage given below.
 
-For file handling a directory structure is made using dictionaries within dictionaries to make a tree structure. Each directory has a dictionary of folders and a dictionary of files.
+## Introduction
 
-## How to install/run
+This project was made for our Operating Systems course in our 5th Semester. The main motivation was for understanding the problems that come up when implementing a file system that is not only used by one person but many people and dealing with the intricate problems of multi-threading and synchronization.
 
-If you have pipenv installed, go to the root directory of the project in your terminal and run `pipenv install` to install dependencies.
-Then simply run `python main.py` in the terminal.
+## Technology Used
+
+Python was our language of choice for this project. In part due to its ease of use and in part due to all the support that is available online.
+
+The only module we needed was `bitarray`, which allows efficient manipulation of boolean values.
+
+## Features
+
+- Standard CRUD(Create Read Update Delete) operations on text files
+- Manipulation of directories and moving files
+- Allows multiple user clients to connect to a host file server and use the filesystem simultaneously
+- View memory map of the filesystem
+
+## Future Work and Evaluation
+
+- An option to specify size of 'virtual hard disk'. By default, the max size is 1 KB.
+- In order to allow clients to connect to the server, port forwarding may need to be set up. How this is set up may depend on the router that is being used by the server.
+
+## How to Install/Run
+
+Make sure you have pipenv installed. Go to the root directory of the project in your terminal and run `pipenv install` to install dependencies.
+
+### To Run as a Server
+
+Run `python main.py` in the terminal. You can set your IP and port in the `server.py` file. By default it is set to `localhost` at port 95.
+
+### To Run as a Client
+
+Run `python client.py`. You will be prompted to input the IP you wish to connect to. This will be the IP used by the server.  
+You will then be asked to input your credentials if you have an account. If you do not have an account, you can create one. In either case, input a username and password.
 
 ## Commands and Example Usage
 
@@ -40,3 +68,9 @@ root/folderB/a:cd example_folder
 root/folderB/a/example_folder: cd ../another_folder
 root/folderB/a/another_folder
 ```
+
+## Credits
+
+- @EkuDS1 (Muhammad Rafay Nadeem)
+- @Vin-Xi (Hamdan Rashid Siddiqui)
+- @faraz455 (Muhammad Faraz Khan)
